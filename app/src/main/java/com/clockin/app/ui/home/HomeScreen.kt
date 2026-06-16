@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.ShiftCalculator
+import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.components.AppCard
 import com.clockin.app.ui.components.ScreenBackground
 import com.clockin.app.ui.components.SectionHeader
@@ -73,7 +72,7 @@ fun HomeScreen(
             SectionHeader(
                 title = "ShiftLog",
                 subtitle = "本周期 ${state.cycleLabel}",
-                icon = Icons.Outlined.Schedule,
+                icon = AppIcons.Schedule,
             )
 
             AppCard {

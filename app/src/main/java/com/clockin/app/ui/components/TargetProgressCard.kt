@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,7 +39,7 @@ fun TargetProgressCard(progress: TargetProgress, modifier: Modifier = Modifier) 
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Icon(
-                    Icons.Outlined.Flag,
+                    AppIcons.Star,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                 )

@@ -7,10 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -24,7 +20,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.history.HistoryScreen
 import com.clockin.app.ui.home.HomeScreen
 import com.clockin.app.ui.settings.SettingsScreen
@@ -55,10 +53,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             ClockInTheme {
                 var tab by remember { mutableIntStateOf(0) }
-                val tabs = listOf(
-                    Triple(0, "打卡", Icons.Outlined.Schedule),
-                    Triple(1, "历史", Icons.Outlined.History),
-                    Triple(2, "设置", Icons.Outlined.Settings),
+                val tabs = listOf<Triple<Int, String, ImageVector>>(
+                    Triple(0, "打卡", AppIcons.Schedule),
+                    Triple(1, "历史", AppIcons.History),
+                    Triple(2, "设置", AppIcons.Settings),
                 )
 
                 Scaffold(

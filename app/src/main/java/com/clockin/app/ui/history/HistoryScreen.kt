@@ -9,13 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.History
+import com.clockin.app.ui.components.AppIcons
+import com.clockin.app.ui.components.AppCard
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -65,7 +60,7 @@ fun HistoryScreen(
             SectionHeader(
                 title = "历史记录",
                 subtitle = state.cycle?.label(),
-                icon = Icons.Outlined.History,
+                icon = AppIcons.History,
             )
 
             AppCard(modifier = Modifier.padding(top = 16.dp, bottom = 12.dp)) {
@@ -77,11 +72,11 @@ fun HistoryScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     IconButton(onClick = viewModel::previousCycle) {
-                        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "上一周期")
+                        Icon(AppIcons.ChevronLeft, contentDescription = "上一周期")
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            Icons.Outlined.CalendarMonth,
+                            AppIcons.Calendar,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                         )
@@ -91,7 +86,7 @@ fun HistoryScreen(
                         )
                     }
                     IconButton(onClick = viewModel::nextCycle) {
-                        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "下一周期")
+                        Icon(AppIcons.ChevronRight, contentDescription = "下一周期")
                     }
                 }
             }
@@ -147,7 +142,7 @@ fun HistoryScreen(
                             onClick = { editing = newRecordForToday() },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Icon(Icons.Outlined.Add, contentDescription = null)
+                            Icon(AppIcons.Add, contentDescription = null)
                             Text(" 补录", modifier = Modifier.padding(start = 4.dp))
                         }
                         Button(
@@ -156,7 +151,7 @@ fun HistoryScreen(
                             shape = ButtonShape,
                             colors = ButtonDefaults.buttonColors(containerColor = AmberPrimary),
                         ) {
-                            Icon(Icons.Outlined.FileDownload, contentDescription = null)
+                            Icon(AppIcons.Export, contentDescription = null)
                             Text(" 导出", modifier = Modifier.padding(start = 4.dp))
                         }
                     }
