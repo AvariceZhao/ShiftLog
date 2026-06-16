@@ -1,6 +1,6 @@
-# 打卡记录
+# ShiftLog
 
-Kotlin + Jetpack Compose + Room 本地打卡 App。
+Kotlin + Jetpack Compose + Room 本地夜班打卡 App。
 
 ## 打开方式
 
