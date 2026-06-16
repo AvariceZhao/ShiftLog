@@ -106,7 +106,15 @@ fun HomeScreen(
                 ) {
                     Text("今日打卡", style = MaterialTheme.typography.titleLarge)
                     val detail = state.detail
-                    if (detail == null) {
+                    if (!state.isReady) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
+                                .clip(MaterialTheme.shapes.medium)
+                                .background(NightSurfaceHigh),
+                        )
+                    } else if (detail == null) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -163,7 +171,7 @@ fun HomeScreen(
             ) {
                 Button(
                     onClick = viewModel::clockIn,
-                    enabled = state.canClockIn,
+                    enabled = state.isReady && state.canClockIn,
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp),
@@ -179,13 +187,13 @@ fun HomeScreen(
                 }
                 OutlinedButton(
                     onClick = viewModel::clockOut,
-                    enabled = state.canClockOut,
+                    enabled = state.isReady && state.canClockOut,
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp)
                         .border(
                             1.dp,
-                            if (state.canClockOut) CyanSecondary else NightBorder,
+                            if (state.isReady && state.canClockOut) CyanSecondary else NightBorder,
                             ButtonShape,
                         ),
                     shape = ButtonShape,

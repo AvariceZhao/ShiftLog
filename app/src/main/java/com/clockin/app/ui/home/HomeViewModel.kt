@@ -17,9 +17,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
+    val isReady: Boolean = false,
     val shiftDate: String = "",
     val detail: RecordDetail? = null,
-    val canClockIn: Boolean = true,
+    val canClockIn: Boolean = false,
     val canClockOut: Boolean = false,
     val cycleLabel: String = "",
     val progress: TargetProgress? = null,
@@ -36,6 +37,7 @@ class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
                 val (shiftDate, record) = active
                 val detail = record?.let { ShiftCalculator.buildRecordDetail(it, settings) }
                 HomeUiState(
+                    isReady = true,
                     shiftDate = shiftDate,
                     detail = detail,
                     canClockIn = record?.clockInTime == null,
