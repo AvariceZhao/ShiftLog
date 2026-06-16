@@ -13,15 +13,20 @@ android {
         applicationId = "com.clockin.app"
         minSdk = 28
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.2"
-        ndk {
-            abiFilters += listOf("arm64-v8a")
-        }
+        versionCode = 4
+        versionName = "1.0.3"
     }
 
     buildTypes {
+        debug {
+            ndk {
+                abiFilters += listOf("arm64-v8a", "x86_64")
+            }
+        }
         release {
+            ndk {
+                abiFilters += listOf("arm64-v8a")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -65,6 +70,9 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    implementation("androidx.glance:glance:1.1.1")
+    implementation("androidx.glance:glance-appwidget:1.1.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

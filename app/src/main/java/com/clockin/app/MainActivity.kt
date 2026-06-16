@@ -45,10 +45,16 @@ class MainActivity : ComponentActivity() {
 
     private var pendingExport: Pair<String, String>? = null
 
+    override fun onResume() {
+        super.onResume()
+        (application as ClockInApplication).refreshWidgets()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val repository = (application as ClockInApplication).repository
+        (application as ClockInApplication).refreshWidgets()
 
         setContent {
             ClockInTheme {

@@ -10,6 +10,9 @@
 # DataStore
 -keep class androidx.datastore.*.** { *; }
 
+# Glance App Widget
+-keep class com.clockin.app.widget.** { *; }
+
 # Crash reports
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

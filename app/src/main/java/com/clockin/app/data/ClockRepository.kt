@@ -15,6 +15,7 @@ import java.time.LocalDateTime
 class ClockRepository(
     private val dao: ClockRecordDao,
     private val settingsRepository: SettingsRepository,
+    private val onRecordsChanged: () -> Unit = {},
 ) {
     val settings: Flow<AppSettings> = settingsRepository.settings
 
@@ -47,6 +48,7 @@ class ClockRepository(
                 clockOutTime = existing?.clockOutTime,
             ).toEntity(),
         )
+        onRecordsChanged()
     }
 
     suspend fun performClockOut() {
@@ -67,14 +69,17 @@ class ClockRepository(
                 clockOutTime = nowMs,
             ).toEntity(),
         )
+        onRecordsChanged()
     }
 
     suspend fun saveRecord(record: ClockRecord) {
         dao.upsert(record.toEntity())
+        onRecordsChanged()
     }
 
     suspend fun deleteRecord(shiftDate: String) {
         dao.delete(shiftDate)
+        onRecordsChanged()
     }
 
     suspend fun updateSettings(settings: AppSettings) {
@@ -83,4 +88,13 @@ class ClockRepository(
 
     suspend fun getCycleRecords(cycle: PayCycle): List<ClockRecord> =
         observeCycleRecords(cycle).first()
+
+    suspend fun loadActiveShift(): Pair<String, ClockRecord?> {
+        val settings = settings.first()
+        val now = LocalDateTime.now()
+        val open = dao.findLatestOpenShift()?.toDomain()
+        val shiftDate = ShiftCalculator.resolveActiveShiftDate(now, settings, open)
+        val record = dao.getByShiftDate(shiftDate)?.toDomain()
+        return shiftDate to record
+    }
 }

@@ -9,6 +9,53 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ClockIn">
+
+        <!-- 2×3 / 3×2 暂不上线，先专注 2×2
+        <receiver
+            android:name=".widget.QuickPunchWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_quick_punch_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_punch_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.TodayStatusWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_today_status_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_today_status_info" />
+        </receiver>
+        -->
+
+        <receiver
+            android:name=".widget.CompactPanelWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_compact_panel_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_compact_panel_info" />
+        </receiver>
+
+        <activity
+            android:name=".widget.ConfirmPunchActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/Theme.ClockIn.ConfirmDialog" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

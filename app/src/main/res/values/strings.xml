@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">ShiftLog</string>
+
+    <!-- 以下字符串保留供 widget_*_info.xml 使用，Manifest 已注释对应 receiver -->
+    <string name="widget_quick_punch_name">ShiftLog · 打卡 (3行2列)</string>
+    <string name="widget_quick_punch_desc">今日状态 + 上下班打卡按钮</string>
+    <string name="widget_today_status_name">ShiftLog · 打卡 (2行3列)</string>
+    <string name="widget_today_status_desc">今日状态 + 并排上下班打卡按钮</string>
+    <string name="widget_compact_panel_name">ShiftLog · 打卡</string>
+    <string name="widget_compact_panel_desc">最小尺寸，状态 + 上下班按钮</string>
+
+    <string name="widget_clock_in">上班打卡</string>
+    <string name="widget_clock_out">下班打卡</string>
 </resources>
