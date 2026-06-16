@@ -42,12 +42,12 @@ class StatsCalculatorTest {
         assertEquals(2, stats.completeCount)
         assertEquals(1, stats.lateCount)
         assertEquals(1, stats.earlyCount)
-        assertEquals(1, stats.missedOutCount)
+        assertEquals(1, stats.incompletePunchCount)
         assertTrue(stats.totalHours > 0)
     }
 
     @Test
-    fun cycleStats_countsMissedInForPastDaysWithoutRecords() {
+    fun cycleStats_countsAbsentForPastDaysWithoutRecords() {
         val stats = StatsCalculator.cycleStats(
             records = emptyList(),
             settings = settings,
@@ -55,13 +55,13 @@ class StatsCalculatorTest {
             today = date(2026, 6, 17),
             now = LocalDateTime.of(2026, 6, 17, 10, 0),
         )
-        assertEquals(9, stats.missedInCount)
-        assertEquals(0, stats.missedOutCount)
+        assertEquals(9, stats.absentCount)
+        assertEquals(0, stats.incompletePunchCount)
         assertEquals(0, stats.clockedDays)
     }
 
     @Test
-    fun cycleStats_doesNotCountMissedOutBeforeShiftEnds() {
+    fun cycleStats_doesNotCountIncompletePunchBeforeShiftEnds() {
         val records = listOf(
             ClockRecord(
                 shiftDate = "2026-06-12",
@@ -76,7 +76,7 @@ class StatsCalculatorTest {
             today = date(2026, 6, 12),
             now = LocalDateTime.of(2026, 6, 12, 20, 0),
         )
-        assertEquals(0, duringShift.missedOutCount)
+        assertEquals(0, duringShift.incompletePunchCount)
 
         val afterShift = StatsCalculator.cycleStats(
             records = records,
@@ -85,7 +85,28 @@ class StatsCalculatorTest {
             today = date(2026, 6, 13),
             now = LocalDateTime.of(2026, 6, 13, 10, 0),
         )
-        assertEquals(1, afterShift.missedOutCount)
+        assertEquals(1, afterShift.incompletePunchCount)
+    }
+
+    @Test
+    fun cycleStats_clockOutOnlyCountsAsIncompletePunch() {
+        val singleDayCycle = PayCycle(date(2026, 6, 10), date(2026, 6, 10))
+        val records = listOf(
+            ClockRecord(
+                shiftDate = "2026-06-10",
+                clockInTime = null,
+                clockOutTime = millisAt(date(2026, 6, 11), LocalTime.of(5, 0)),
+            ),
+        )
+        val stats = StatsCalculator.cycleStats(
+            records = records,
+            settings = settings,
+            cycle = singleDayCycle,
+            today = date(2026, 6, 10),
+            now = LocalDateTime.of(2026, 6, 10, 20, 0),
+        )
+        assertEquals(0, stats.absentCount)
+        assertEquals(1, stats.incompletePunchCount)
     }
 
     @Test

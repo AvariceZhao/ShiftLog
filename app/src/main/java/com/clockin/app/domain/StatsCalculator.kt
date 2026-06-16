@@ -18,12 +18,11 @@ object StatsCalculator {
         var totalHours = 0.0
         var lateCount = 0
         var earlyCount = 0
-        var missedInCount = 0
-        var missedOutCount = 0
+        var absentCount = 0
+        var incompletePunchCount = 0
         var completeCount = 0
 
         records.forEach { record ->
-            val shiftDate = LocalDate.parse(record.shiftDate, DateFormats.SHIFT_DATE)
             val detail = ShiftCalculator.buildRecordDetail(record, settings, zoneId)
             if (record.clockInTime != null) {
                 clockedDays++
@@ -34,23 +33,25 @@ object StatsCalculator {
             }
             if (detail.clockInStatus == PunchStatus.LATE) lateCount++
             if (detail.clockOutStatus == PunchStatus.EARLY) earlyCount++
-            if (detail.clockInStatus == PunchStatus.MISSED_IN &&
-                shouldEvaluateMissedIn(shiftDate, today, now, settings)
-            ) {
-                missedInCount++
-            }
-            if (detail.clockOutStatus == PunchStatus.MISSED_OUT &&
-                shouldEvaluateMissedOut(shiftDate, now, settings)
-            ) {
-                missedOutCount++
-            }
         }
 
         var date = cycle.start
         while (!date.isAfter(cycle.end) && !date.isAfter(today)) {
-            val key = date.format(DateFormats.SHIFT_DATE)
-            if (!recordByDate.containsKey(key) && shouldEvaluateMissedIn(date, today, now, settings)) {
-                missedInCount++
+            if (!shouldEvaluateDay(date, today, now, settings)) {
+                date = date.plusDays(1)
+                continue
+            }
+            val record = recordByDate[date.format(DateFormats.SHIFT_DATE)]
+            when {
+                record == null || (record.clockInTime == null && record.clockOutTime == null) ->
+                    absentCount++
+                record.clockInTime != null && record.clockOutTime == null -> {
+                    if (shouldEvaluateMissedOut(date, now, settings)) {
+                        incompletePunchCount++
+                    }
+                }
+                record.clockInTime == null && record.clockOutTime != null ->
+                    incompletePunchCount++
             }
             date = date.plusDays(1)
         }
@@ -60,11 +61,18 @@ object StatsCalculator {
             totalHours = totalHours,
             lateCount = lateCount,
             earlyCount = earlyCount,
-            missedInCount = missedInCount,
-            missedOutCount = missedOutCount,
+            absentCount = absentCount,
+            incompletePunchCount = incompletePunchCount,
             completeCount = completeCount,
         )
     }
+
+    private fun shouldEvaluateDay(
+        shiftDate: LocalDate,
+        today: LocalDate,
+        now: LocalDateTime,
+        settings: AppSettings,
+    ): Boolean = shouldEvaluateAbsent(shiftDate, today, now, settings)
 
     private fun shiftStartDateTime(shiftDate: LocalDate, settings: AppSettings): LocalDateTime =
         LocalDateTime.of(shiftDate, settings.standardClockIn)
@@ -74,7 +82,7 @@ object StatsCalculator {
         return LocalDateTime.of(endDate, settings.standardClockOut)
     }
 
-    private fun shouldEvaluateMissedIn(
+    private fun shouldEvaluateAbsent(
         shiftDate: LocalDate,
         today: LocalDate,
         now: LocalDateTime,

@@ -50,8 +50,10 @@ data class CycleStats(
     val totalHours: Double,
     val lateCount: Int,
     val earlyCount: Int,
-    val missedInCount: Int,
-    val missedOutCount: Int,
+    /** 上下班均未打卡 */
+    val absentCount: Int,
+    /** 只打了上班未打下班，或有下班无上班 */
+    val incompletePunchCount: Int,
     val completeCount: Int,
 )
 

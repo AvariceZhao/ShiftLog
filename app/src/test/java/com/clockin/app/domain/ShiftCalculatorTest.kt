@@ -49,11 +49,19 @@ class ShiftCalculatorTest {
 
     @Test
     fun clockOutStatus_detectsEarlyNormalAndMissed() {
+        val shiftDate = "2026-06-16"
         val early = millisAt(date(2026, 6, 17), LocalTime.of(4, 30))
         val normal = millisAt(date(2026, 6, 17), LocalTime.of(5, 0))
-        assertEquals(PunchStatus.EARLY, ShiftCalculator.clockOutStatus(early, 1L, settings, TestZone))
-        assertEquals(PunchStatus.NORMAL, ShiftCalculator.clockOutStatus(normal, 1L, settings, TestZone))
-        assertEquals(PunchStatus.MISSED_OUT, ShiftCalculator.clockOutStatus(null, 1L, settings, TestZone))
+        assertEquals(PunchStatus.EARLY, ShiftCalculator.clockOutStatus(early, 1L, shiftDate, settings, TestZone))
+        assertEquals(PunchStatus.NORMAL, ShiftCalculator.clockOutStatus(normal, 1L, shiftDate, settings, TestZone))
+        assertEquals(PunchStatus.MISSED_OUT, ShiftCalculator.clockOutStatus(null, 1L, shiftDate, settings, TestZone))
+    }
+
+    @Test
+    fun clockOutStatus_sameDayEvening_isEarlyForNightShift() {
+        val shiftDate = "2026-06-16"
+        val evening = millisAt(date(2026, 6, 16), LocalTime.of(22, 0))
+        assertEquals(PunchStatus.EARLY, ShiftCalculator.clockOutStatus(evening, 1L, shiftDate, settings, TestZone))
     }
 
     @Test

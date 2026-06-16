@@ -54,22 +54,35 @@ object ShiftCalculator {
         return if (time.isAfter(settings.standardClockIn)) PunchStatus.LATE else PunchStatus.NORMAL
     }
 
+    fun expectedShiftEnd(shiftDate: LocalDate, settings: AppSettings): LocalDateTime {
+        val endDate = if (settings.isClockOutNextDay) shiftDate.plusDays(1) else shiftDate
+        return LocalDateTime.of(endDate, settings.standardClockOut)
+    }
+
     fun clockOutStatus(
         clockOutMs: Long?,
         clockInMs: Long?,
+        shiftDate: String,
         settings: AppSettings,
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): PunchStatus {
         if (clockOutMs == null) {
             return if (clockInMs != null) PunchStatus.MISSED_OUT else PunchStatus.INCOMPLETE
         }
-        val time = clockOutMs.toLocalDateTime(zoneId).toLocalTime()
-        return if (time.isBefore(settings.standardClockOut)) PunchStatus.EARLY else PunchStatus.NORMAL
+        val actualOut = clockOutMs.toLocalDateTime(zoneId)
+        val expectedEnd = expectedShiftEnd(shiftDate.toLocalDate(), settings)
+        return if (actualOut.isBefore(expectedEnd)) PunchStatus.EARLY else PunchStatus.NORMAL
     }
 
     fun buildRecordDetail(record: ClockRecord, settings: AppSettings, zoneId: ZoneId = ZoneId.systemDefault()): RecordDetail {
         val inStatus = clockInStatus(record.clockInTime, settings, zoneId)
-        val outStatus = clockOutStatus(record.clockOutTime, record.clockInTime, settings, zoneId)
+        val outStatus = clockOutStatus(
+            clockOutMs = record.clockOutTime,
+            clockInMs = record.clockInTime,
+            shiftDate = record.shiftDate,
+            settings = settings,
+            zoneId = zoneId,
+        )
         val hours = if (record.clockInTime != null && record.clockOutTime != null) {
             hoursWorked(record.clockInTime, record.clockOutTime)
         } else {
@@ -78,8 +91,11 @@ object ShiftCalculator {
         val notes = buildList {
             if (inStatus == PunchStatus.LATE) add("迟到")
             if (outStatus == PunchStatus.EARLY) add("早退")
-            if (outStatus == PunchStatus.MISSED_OUT) add("漏打下班")
-            if (inStatus == PunchStatus.MISSED_IN) add("漏打上班")
+            if (outStatus == PunchStatus.MISSED_OUT ||
+                (inStatus == PunchStatus.MISSED_IN && record.clockOutTime != null)
+            ) {
+                add("缺卡")
+            }
         }
         return RecordDetail(
             record = record,
@@ -99,8 +115,8 @@ object ShiftCalculator {
         PunchStatus.NORMAL -> "正常"
         PunchStatus.LATE -> "迟到"
         PunchStatus.EARLY -> "早退"
-        PunchStatus.MISSED_IN -> "漏打上班"
-        PunchStatus.MISSED_OUT -> "漏打下班"
+        PunchStatus.MISSED_IN -> "缺卡"
+        PunchStatus.MISSED_OUT -> "缺卡"
         PunchStatus.INCOMPLETE -> "未打卡"
     }
 }
