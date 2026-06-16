@@ -4,7 +4,7 @@ Kotlin + Jetpack Compose + Room 本地打卡 App。
 
 ## 下载
 
-[ShiftLog v1.0 Release APK](https://github.com/AvariceZhao/ShiftLog/releases/tag/v1.0)（arm64 真机，Android 8.0+）
+[最新 Release APK](https://github.com/AvariceZhao/ShiftLog/releases/latest)（arm64 真机，Android 8.0+）
 
 ## 打开方式
 
