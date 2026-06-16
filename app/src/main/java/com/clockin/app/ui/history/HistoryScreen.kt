@@ -49,6 +49,7 @@ fun HistoryScreen(
 ) {
     val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory(repository))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<ClockRecord?>(null) }
 
     ScreenBackground(modifier = modifier) {
@@ -225,6 +226,7 @@ fun HistoryScreen(
     editing?.let { record ->
         RecordEditDialog(
             record = record,
+            settings = settings,
             onDismiss = { editing = null },
             onSave = {
                 viewModel.saveRecord(it)

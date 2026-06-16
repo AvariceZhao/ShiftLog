@@ -54,6 +54,8 @@ class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
         AppSettings(),
     )
 
+    val settings: StateFlow<AppSettings> = settingsState
+
     fun previousCycle() {
         val current = uiState.value.cycle ?: return
         val settings = settingsState.value
