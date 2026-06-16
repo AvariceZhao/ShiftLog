@@ -79,7 +79,7 @@ object ShiftCalculator {
             if (inStatus == PunchStatus.LATE) add("迟到")
             if (outStatus == PunchStatus.EARLY) add("早退")
             if (outStatus == PunchStatus.MISSED_OUT) add("漏打下班")
-            if (inStatus == PunchStatus.MISSED_IN && record.clockOutTime != null) add("漏打上班")
+            if (inStatus == PunchStatus.MISSED_IN) add("漏打上班")
         }
         return RecordDetail(
             record = record,

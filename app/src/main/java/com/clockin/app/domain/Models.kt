@@ -64,8 +64,14 @@ data class TargetProgress(
     val remainingHours: Double,
     val currentDailyAvg: Double?,
     val cycleDaysRemaining: Int,
-    val requiredDailyAvg: Double?,
-    val requiredDailyUnreachable: Boolean,
+    /** 剩余工时 ÷ 目标剩余出勤天数；天数已满时不计算 */
+    val requiredDailyByTargetDays: Double?,
+    val requiredDailyByTargetDaysUnreachable: Boolean,
+    /** 剩余工时 ÷ 周期剩余日历天数 */
+    val requiredDailyByCycleDays: Double?,
+    val requiredDailyByCycleDaysUnreachable: Boolean,
+    /** 出勤天数已满、工时未满：只展示剩余工时，不展示目标日均 */
+    val daysTargetMetHoursNotMet: Boolean,
 )
 
 object DateFormats {

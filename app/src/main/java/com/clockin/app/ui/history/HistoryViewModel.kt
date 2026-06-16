@@ -42,7 +42,7 @@ class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
                 HistoryUiState(
                     cycle = cycle,
                     records = records.map { ShiftCalculator.buildRecordDetail(it, settings) },
-                    stats = StatsCalculator.cycleStats(records, settings),
+                    stats = StatsCalculator.cycleStats(records, settings, cycle),
                     progress = StatsCalculator.targetProgress(records, settings, cycle),
                 )
             }

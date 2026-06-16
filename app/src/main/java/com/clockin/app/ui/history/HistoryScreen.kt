@@ -208,6 +208,7 @@ fun HistoryScreen(
                                         val status = when (tag) {
                                             "迟到" -> com.clockin.app.domain.PunchStatus.LATE
                                             "早退" -> com.clockin.app.domain.PunchStatus.EARLY
+                                            "漏打上班" -> com.clockin.app.domain.PunchStatus.MISSED_IN
                                             else -> com.clockin.app.domain.PunchStatus.MISSED_OUT
                                         }
                                         StatusChip(tag, status)

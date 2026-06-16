@@ -35,14 +35,15 @@ class ClockRepository(
         ).map { list -> list.map { it.toDomain() } }
 
     suspend fun performClockIn() {
-        val nowMs = System.currentTimeMillis()
-        val shiftDate = ShiftCalculator.shiftDateForClockIn(nowMs)
+        val settings = settings.first()
+        val now = LocalDateTime.now()
+        val shiftDate = ShiftCalculator.currentShiftDate(now, settings)
         val existing = dao.getByShiftDate(shiftDate)?.toDomain()
         if (existing?.clockInTime != null) return
         dao.upsert(
             ClockRecord(
                 shiftDate = shiftDate,
-                clockInTime = nowMs,
+                clockInTime = System.currentTimeMillis(),
                 clockOutTime = existing?.clockOutTime,
             ).toEntity(),
         )
