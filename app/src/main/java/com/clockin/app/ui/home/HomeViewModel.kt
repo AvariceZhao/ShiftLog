@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.clockin.app.data.ClockRepository
+import com.clockin.app.domain.AppTimeTicker
 import com.clockin.app.domain.CycleCalculator
 import com.clockin.app.domain.RecordDetail
 import com.clockin.app.domain.ShiftCalculator
@@ -28,8 +29,10 @@ data class HomeUiState(
 
 class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
     val uiState: StateFlow<HomeUiState> =
-        repository.settings.flatMapLatest { settings ->
-            val cycle = CycleCalculator.currentCycle(settings.cycleStartDay)
+        combine(repository.settings, AppTimeTicker.localDateFlow()) { settings, today ->
+            settings to today
+        }.flatMapLatest { (settings, today) ->
+            val cycle = CycleCalculator.currentCycle(settings.cycleStartDay, today)
             combine(
                 repository.observeActiveShift(),
                 repository.observeCycleRecords(cycle),

@@ -6,10 +6,12 @@ import com.clockin.app.ClockInApplication
 import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.ClockRecord
 import com.clockin.app.domain.CycleCalculator
+import com.clockin.app.domain.DateFormats
 import com.clockin.app.domain.PayCycle
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.StatsCalculator
 import com.clockin.app.domain.toLocalDate
+import com.clockin.app.domain.toLocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.flow.first
@@ -103,7 +105,9 @@ object WidgetStateLoader {
             state.hasClockedIn -> "下未打"
             else -> "下--"
         }
-        return "$inPart  $outPart"
+        val base = "$inPart  $outPart"
+        val hours = state.hoursWorkedToday?.let { ShiftCalculator.formatHoursShort(it) }
+        return if (hours != null) "$base · $hours" else base
     }
 
     fun remainingFootnote(state: WidgetUiState): String {
@@ -168,6 +172,6 @@ object WidgetStateLoader {
 
     private fun formatClockTime(millis: Long?): String {
         if (millis == null) return "--:--"
-        return ShiftCalculator.formatTime(millis).take(5)
+        return millis.toLocalDateTime().format(DateFormats.TIME)
     }
 }

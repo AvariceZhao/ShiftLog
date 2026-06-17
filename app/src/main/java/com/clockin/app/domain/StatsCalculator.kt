@@ -23,6 +23,8 @@ object StatsCalculator {
         var completeCount = 0
 
         records.forEach { record ->
+            val shiftDate = record.shiftDate.toLocalDate()
+            if (!shouldEvaluateDay(shiftDate, today, now, settings)) return@forEach
             val detail = ShiftCalculator.buildRecordDetail(record, settings, zoneId)
             if (record.clockInTime != null) {
                 clockedDays++

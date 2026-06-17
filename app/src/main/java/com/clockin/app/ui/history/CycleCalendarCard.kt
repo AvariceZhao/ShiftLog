@@ -18,13 +18,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.ClockRecord
 import com.clockin.app.domain.CycleDayStatus
 import com.clockin.app.domain.CycleDayStatusCalculator
 import com.clockin.app.domain.PayCycle
+import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.toShiftDateString
 import com.clockin.app.ui.components.AppCard
 import com.clockin.app.ui.theme.NightBorder
@@ -114,18 +117,24 @@ fun CycleCalendarCard(
                     week.forEach { day ->
                         val inCycle = cycle.contains(day)
                         val shiftDate = day.toShiftDateString()
+                        val record = recordByDate[shiftDate]
                         val status = if (inCycle) {
                             CycleDayStatusCalculator.statusForDate(
                                 date = day,
                                 cycle = cycle,
-                                record = recordByDate[shiftDate],
+                                record = record,
                                 settings = settings,
                             )
                         } else {
                             CycleDayStatus.OUT_OF_CYCLE
                         }
+                        val hoursLabel = record?.let { rec ->
+                            ShiftCalculator.buildRecordDetail(rec, settings).hoursWorked
+                                ?.let(ShiftCalculator::formatHoursShort)
+                        }
                         CalendarDayCell(
                             day = day.dayOfMonth,
+                            hoursLabel = hoursLabel,
                             status = status,
                             enabled = inCycle && status != CycleDayStatus.OUT_OF_CYCLE,
                             modifier = Modifier.weight(1f),
@@ -149,6 +158,7 @@ fun CycleCalendarCard(
 @Composable
 private fun CalendarDayCell(
     day: Int,
+    hoursLabel: String? = null,
     status: CycleDayStatus,
     enabled: Boolean,
     onClick: () -> Unit,
@@ -175,11 +185,31 @@ private fun CalendarDayCell(
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = day.toString(),
-            style = MaterialTheme.typography.labelMedium,
-            color = if (enabled) MaterialTheme.colorScheme.onSurface else TextMuted.copy(alpha = 0.35f),
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
+            Text(
+                text = day.toString(),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = if (hoursLabel != null) 11.sp else 12.sp,
+                ),
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else TextMuted.copy(alpha = 0.35f),
+            )
+            hoursLabel?.let { hours ->
+                Text(
+                    text = hours,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 8.sp,
+                        lineHeight = 9.sp,
+                    ),
+                    fontFamily = FontFamily.Monospace,
+                    color = if (enabled) MaterialTheme.colorScheme.secondary else TextMuted.copy(alpha = 0.35f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 

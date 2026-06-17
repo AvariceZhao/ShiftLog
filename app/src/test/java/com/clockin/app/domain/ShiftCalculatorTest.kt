@@ -9,9 +9,9 @@ class ShiftCalculatorTest {
     private val settings = defaultSettings()
 
     @Test
-    fun shiftDateForClockIn_usesCalendarDate() {
-        val ms = millisAt(date(2026, 6, 16), LocalTime.of(7, 2))
-        assertEquals("2026-06-16", ShiftCalculator.shiftDateForClockIn(ms, TestZone))
+    fun currentShiftDate_afterStandardClockIn_usesCalendarDate() {
+        val now = LocalDateTime.of(2026, 6, 16, 7, 2)
+        assertEquals("2026-06-16", ShiftCalculator.currentShiftDate(now, settings))
     }
 
     @Test

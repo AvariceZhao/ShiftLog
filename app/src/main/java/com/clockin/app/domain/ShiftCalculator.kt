@@ -6,10 +6,6 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 object ShiftCalculator {
-    fun shiftDateForClockIn(instantMs: Long, zoneId: ZoneId = ZoneId.systemDefault()): String {
-        return instantMs.toLocalDateTime(zoneId).toLocalDate().toShiftDateString()
-    }
-
     fun shiftDateForClockOut(instantMs: Long, settings: AppSettings, zoneId: ZoneId = ZoneId.systemDefault()): String {
         val dateTime = instantMs.toLocalDateTime(zoneId)
         val time = dateTime.toLocalTime()
@@ -110,6 +106,9 @@ object ShiftCalculator {
         if (millis == null) return "--"
         return millis.toLocalDateTime(zoneId).format(DateFormats.TIME_SECONDS)
     }
+
+    /** 紧凑工时展示，用于日历格、小组件等窄空间 */
+    fun formatHoursShort(hours: Double): String = "${"%.1f".format(hours)}h"
 
     fun statusLabel(status: PunchStatus): String = when (status) {
         PunchStatus.NORMAL -> "正常"

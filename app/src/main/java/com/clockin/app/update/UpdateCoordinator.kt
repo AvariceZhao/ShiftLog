@@ -62,7 +62,7 @@ class UpdateCoordinator(context: Context) {
                 return UpdateCheckResult.UpToDate
             }
             _promptRelease.value = release
-            return UpdateCheckResult.UpToDate
+            return UpdateCheckResult.Available(release)
         }
         return UpdateCheckResult.Available(release)
     }

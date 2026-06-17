@@ -185,6 +185,27 @@ class StatsCalculatorTest {
     }
 
     @Test
+    fun cycleStats_ignoresFutureRecordsInAggregates() {
+        val records = listOf(
+            ClockRecord(
+                shiftDate = "2026-06-25",
+                clockInTime = millisAt(date(2026, 6, 25), LocalTime.of(7, 10)),
+                clockOutTime = millisAt(date(2026, 6, 26), LocalTime.of(5, 0)),
+            ),
+        )
+        val stats = StatsCalculator.cycleStats(
+            records = records,
+            settings = settings,
+            cycle = cycle,
+            today = date(2026, 6, 19),
+            now = LocalDateTime.of(2026, 6, 19, 10, 0),
+        )
+        assertEquals(0, stats.clockedDays)
+        assertEquals(0, stats.lateCount)
+        assertEquals(0.0, stats.totalHours, 0.001)
+    }
+
+    @Test
     fun formatRemaining_showsPlusWhenExceeded() {
         assertEquals("+2 天", StatsCalculator.formatRemainingDays(-2))
         assertEquals("+3.5h", StatsCalculator.formatRemainingHours(-3.5))

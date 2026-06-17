@@ -26,9 +26,10 @@ object BackupExporter {
         return root.toString(2)
     }
 
-    fun fileName(): String {
+    fun fileName(zoneId: ZoneId = ZoneId.systemDefault()): String {
         val stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")
-            .format(java.time.LocalDateTime.now())
+            .withZone(zoneId)
+            .format(Instant.now())
         return "ShiftLog_backup_$stamp.json"
     }
 
@@ -84,7 +85,9 @@ object BackupImporter {
             .filter { it.isNotEmpty() && !it.startsWith("#") }
         val dataLines = lines.dropWhile { !it.startsWith("日期,") && !it.startsWith("日期，") }
         if (dataLines.isEmpty()) error("未找到 CSV 数据行")
-        dataLines.drop(1).mapNotNull { line -> parseCsvLine(line, settings, zoneId) }
+        dataLines.drop(1).mapNotNull { line ->
+            runCatching { parseCsvLine(line, settings, zoneId) }.getOrNull()
+        }
     }.recoverCatching { error ->
         throw IllegalArgumentException(error.message ?: "CSV 文件格式无效")
     }
@@ -124,6 +127,8 @@ object BackupImporter {
         val clockIn = parts[1].takeIf { it.isNotBlank() }?.let { parseTime(it) }
         val clockOut = parts[2].takeIf { it.isNotBlank() }?.let { parseTime(it) }
         if (clockIn == null && clockOut == null) return null
+        if (parts[1].isNotBlank() && clockIn == null) return null
+        if (parts[2].isNotBlank() && clockOut == null) return null
         return ClockRecord(
             shiftDate = shiftDate,
             clockInTime = clockIn?.let { timeToMillis(date, it, isClockOut = false, settings, zoneId) },
@@ -161,8 +166,19 @@ object BackupImporter {
         return null
     }
 
-    private fun parseTime(text: String): LocalTime =
-        LocalTime.parse(text.trim(), DateFormats.TIME)
+    private fun parseTime(text: String): LocalTime? {
+        val trimmed = text.trim()
+        val formatters = listOf(
+            DateFormats.TIME,
+            DateFormats.TIME_SECONDS,
+            java.time.format.DateTimeFormatter.ofPattern("H:mm"),
+            java.time.format.DateTimeFormatter.ofPattern("H:mm:ss"),
+        )
+        for (fmt in formatters) {
+            runCatching { return LocalTime.parse(trimmed, fmt) }.getOrNull()
+        }
+        return null
+    }
 
     private fun timeToMillis(
         shiftDate: java.time.LocalDate,

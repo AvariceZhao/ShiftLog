@@ -2,8 +2,10 @@ package com.clockin.app.data
 
 import com.clockin.app.domain.AppBackup
 import com.clockin.app.domain.AppSettings
+import com.clockin.app.domain.AppTimeTicker
 import com.clockin.app.domain.ClockRecord
 import com.clockin.app.domain.PayCycle
+import com.clockin.app.domain.PunchResult
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.toShiftDateString
 import androidx.room.withTransaction
@@ -24,7 +26,12 @@ class ClockRepository(
     val settings: Flow<AppSettings> = settingsRepository.settings
 
     fun observeActiveShift(): Flow<Pair<String, ClockRecord?>> =
-        combine(settings, dao.observeLatestOpenShift()) { currentSettings, openEntity ->
+        combine(
+            settings,
+            dao.observeLatestOpenShift(),
+            AppTimeTicker.localDateFlow(),
+            AppTimeTicker.minuteTickFlow(),
+        ) { currentSettings, openEntity, _, _ ->
             val open = openEntity?.toDomain()
             ShiftCalculator.resolveActiveShiftDate(LocalDateTime.now(), currentSettings, open)
         }.flatMapLatest { shiftDate ->
@@ -39,12 +46,12 @@ class ClockRepository(
             cycle.end.toShiftDateString(),
         ).map { list -> list.map { it.toDomain() } }
 
-    suspend fun performClockIn() {
+    suspend fun performClockIn(): PunchResult {
         val settings = settings.first()
         val now = LocalDateTime.now()
         val shiftDate = ShiftCalculator.currentShiftDate(now, settings)
         val existing = dao.getByShiftDate(shiftDate)?.toDomain()
-        if (existing?.clockInTime != null) return
+        if (existing?.clockInTime != null) return PunchResult.AlreadyClockedIn
         dao.upsert(
             ClockRecord(
                 shiftDate = shiftDate,
@@ -53,9 +60,10 @@ class ClockRepository(
             ).toEntity(),
         )
         onRecordsChanged()
+        return PunchResult.Success
     }
 
-    suspend fun performClockOut() {
+    suspend fun performClockOut(): PunchResult {
         val settings = settings.first()
         val nowMs = System.currentTimeMillis()
         val open = dao.findLatestOpenShift()?.toDomain()
@@ -65,7 +73,7 @@ class ClockRepository(
             open,
         )
         val existing = dao.getByShiftDate(shiftDate)?.toDomain()
-        if (existing?.clockInTime == null) return
+        if (existing?.clockInTime == null) return PunchResult.NotClockedInYet
         dao.upsert(
             ClockRecord(
                 shiftDate = shiftDate,
@@ -74,6 +82,7 @@ class ClockRepository(
             ).toEntity(),
         )
         onRecordsChanged()
+        return PunchResult.Success
     }
 
     suspend fun saveRecord(record: ClockRecord) {

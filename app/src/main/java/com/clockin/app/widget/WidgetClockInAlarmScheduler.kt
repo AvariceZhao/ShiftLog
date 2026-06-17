@@ -56,25 +56,37 @@ object WidgetClockInAlarmScheduler {
         val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             alarmManager.canScheduleExactAlarms()
         if (canExact) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                pending,
-            )
-            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+            try {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    pending,
+                )
+                WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+            } catch (_: SecurityException) {
+                scheduleWithWorkManager(context, triggerAtMillis, pending, alarmManager)
+            }
         } else {
-            // 无精确闹钟权限时，用 WorkManager 近似触发
-            alarmManager.cancel(pending)
-            val delayMs = (triggerAtMillis - System.currentTimeMillis()).coerceAtLeast(0)
-            val request = OneTimeWorkRequestBuilder<WidgetClockInRefreshWorker>()
-                .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
-                .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(
-                WORK_NAME,
-                androidx.work.ExistingWorkPolicy.REPLACE,
-                request,
-            )
+            scheduleWithWorkManager(context, triggerAtMillis, pending, alarmManager)
         }
+    }
+
+    private fun scheduleWithWorkManager(
+        context: Context,
+        triggerAtMillis: Long,
+        pending: PendingIntent,
+        alarmManager: AlarmManager,
+    ) {
+        alarmManager.cancel(pending)
+        val delayMs = (triggerAtMillis - System.currentTimeMillis()).coerceAtLeast(0)
+        val request = OneTimeWorkRequestBuilder<WidgetClockInRefreshWorker>()
+            .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            WORK_NAME,
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            request,
+        )
     }
 
     private fun pendingIntent(context: Context): PendingIntent {

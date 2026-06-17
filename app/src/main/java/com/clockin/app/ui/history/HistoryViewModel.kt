@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.clockin.app.data.ClockRepository
+import com.clockin.app.domain.AppTimeTicker
 import com.clockin.app.domain.AppBackup
 import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.BackupExporter
@@ -38,8 +39,12 @@ class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
     private val cycleOverride = MutableStateFlow<PayCycle?>(null)
 
     val uiState: StateFlow<HistoryUiState> =
-        combine(repository.settings, cycleOverride) { settings, override ->
-            settings to (override ?: CycleCalculator.currentCycle(settings.cycleStartDay))
+        combine(
+            repository.settings,
+            cycleOverride,
+            AppTimeTicker.localDateFlow(),
+        ) { settings, override, today ->
+            settings to (override ?: CycleCalculator.currentCycle(settings.cycleStartDay, today))
         }.flatMapLatest { (settings, cycle) ->
             repository.observeCycleRecords(cycle).map { records ->
                 HistoryUiState(
