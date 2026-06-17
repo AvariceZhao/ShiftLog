@@ -43,6 +43,15 @@ interface ClockRecordDao {
     )
     suspend fun findLatestOpenShift(): ClockRecordEntity?
 
+    @Query("DELETE FROM clock_records")
+    suspend fun deleteAll()
+
+    @Query("SELECT * FROM clock_records ORDER BY shiftDate ASC")
+    suspend fun getAll(): List<ClockRecordEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(records: List<ClockRecordEntity>)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(record: ClockRecordEntity)
 

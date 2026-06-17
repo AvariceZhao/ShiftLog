@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.clockin.app.data.ClockRepository
+import com.clockin.app.domain.AppBackup
 import com.clockin.app.domain.AppSettings
+import com.clockin.app.domain.BackupExporter
+import com.clockin.app.domain.BackupImporter
 import com.clockin.app.domain.ClockRecord
 import com.clockin.app.domain.CycleCalculator
 import com.clockin.app.domain.CsvExporter
@@ -91,6 +94,64 @@ class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
                 CsvExporter.export(cycle, records, settings, progress),
                 CsvExporter.fileName(cycle),
             )
+        }
+    }
+
+    fun buildBackup(onReady: (content: String, fileName: String) -> Unit) {
+        viewModelScope.launch {
+            val settings = settingsState.value
+            val records = repository.getAllRecords()
+            onReady(
+                BackupExporter.export(settings, records),
+                BackupExporter.fileName(),
+            )
+        }
+    }
+
+    fun parseBackupJson(
+        text: String,
+        onReady: (AppBackup) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        BackupImporter.parseJson(text)
+            .onSuccess(onReady)
+            .onFailure { onError(it.message ?: "备份文件无效") }
+    }
+
+    fun parseCsvImport(
+        text: String,
+        onReady: (List<ClockRecord>) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val settings = settingsState.value
+            BackupImporter.parseCsv(text, settings)
+                .onSuccess(onReady)
+                .onFailure { onError(it.message ?: "CSV 文件无效") }
+        }
+    }
+
+    fun restoreBackup(backup: AppBackup, replaceExisting: Boolean, onDone: (String) -> Unit) {
+        viewModelScope.launch {
+            runCatching {
+                repository.restoreBackup(backup, replaceExisting = replaceExisting)
+            }.onSuccess {
+                onDone(if (replaceExisting) "已完全恢复备份" else "已合并导入备份")
+            }.onFailure {
+                onDone(it.message ?: "恢复失败")
+            }
+        }
+    }
+
+    fun mergeCsvRecords(records: List<ClockRecord>, onDone: (String) -> Unit) {
+        viewModelScope.launch {
+            runCatching {
+                repository.mergeRecords(records)
+            }.onSuccess {
+                onDone("已导入 ${records.size} 条记录")
+            }.onFailure {
+                onDone(it.message ?: "导入失败")
+            }
         }
     }
 

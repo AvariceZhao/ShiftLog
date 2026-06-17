@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.clockin.app.ui.components.SimpleMarkdownText
 import com.clockin.app.ui.theme.NightSurface
 import com.clockin.app.ui.theme.TextSecondary
 import com.clockin.app.update.ReleaseInfo
@@ -49,11 +50,7 @@ fun UpdateAvailableDialog(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Text(
-                    release.releaseNotes,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                )
+                SimpleMarkdownText(release.releaseNotes)
                 Text(
                     "此版本不再提醒",
                     modifier = Modifier.clickable(onClick = onDismissVersion),

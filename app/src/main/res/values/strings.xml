@@ -11,4 +11,7 @@
 
     <string name="widget_clock_in">上班打卡</string>
     <string name="widget_clock_out">下班打卡</string>
+
+    <string name="shortcut_clock_in">上班打卡</string>
+    <string name="shortcut_clock_out">下班打卡</string>
 </resources>

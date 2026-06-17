@@ -1,10 +1,12 @@
 package com.clockin.app.data
 
+import com.clockin.app.domain.AppBackup
 import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.ClockRecord
 import com.clockin.app.domain.PayCycle
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.toShiftDateString
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -15,6 +17,7 @@ import java.time.LocalDateTime
 class ClockRepository(
     private val dao: ClockRecordDao,
     private val settingsRepository: SettingsRepository,
+    private val db: AppDatabase,
     private val onRecordsChanged: () -> Unit = {},
     private val onSettingsChanged: () -> Unit = {},
 ) {
@@ -98,5 +101,28 @@ class ClockRepository(
         val shiftDate = ShiftCalculator.resolveActiveShiftDate(now, settings, open)
         val record = dao.getByShiftDate(shiftDate)?.toDomain()
         return shiftDate to record
+    }
+
+    suspend fun getAllRecords(): List<ClockRecord> =
+        dao.getAll().map { it.toDomain() }
+
+    suspend fun mergeRecords(records: List<ClockRecord>) {
+        if (records.isEmpty()) return
+        dao.upsertAll(records.map { it.toEntity() })
+        onRecordsChanged()
+    }
+
+    suspend fun restoreBackup(backup: AppBackup, replaceExisting: Boolean) {
+        db.withTransaction {
+            if (replaceExisting) {
+                dao.deleteAll()
+                settingsRepository.updateSettings(backup.settings)
+            }
+            dao.upsertAll(backup.records.map { it.toEntity() })
+        }
+        onRecordsChanged()
+        if (replaceExisting) {
+            onSettingsChanged()
+        }
     }
 }

@@ -1,6 +1,5 @@
 package com.clockin.app.ui.history
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,48 +8,86 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import com.clockin.app.ui.components.AppIcons
-import com.clockin.app.ui.components.AppCard
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.clockin.app.data.ClockRepository
+import com.clockin.app.domain.AppBackup
 import com.clockin.app.domain.ClockRecord
-import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.ui.components.AppCard
+import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.components.ScreenBackground
 import com.clockin.app.ui.components.SectionHeader
-import com.clockin.app.ui.components.StatusChip
 import com.clockin.app.ui.components.TargetProgressCard
 import com.clockin.app.ui.theme.AmberPrimary
 import com.clockin.app.ui.theme.ButtonShape
 import com.clockin.app.ui.theme.TextSecondary
 
+private enum class HistoryViewMode {
+    Calendar,
+    List,
+}
+
 @Composable
 fun HistoryScreen(
     repository: ClockRepository,
     modifier: Modifier = Modifier,
-    onExport: (content: String, fileName: String) -> Unit,
+    importText: String? = null,
+    onImportConsumed: () -> Unit = {},
+    onExportCsv: (content: String, fileName: String) -> Unit,
+    onExportBackup: (content: String, fileName: String) -> Unit,
+    onPickImport: () -> Unit,
 ) {
     val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory(repository))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<ClockRecord?>(null) }
+    var pendingBackup by remember { mutableStateOf<AppBackup?>(null) }
+    var pendingCsvRecords by remember { mutableStateOf<List<ClockRecord>?>(null) }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
+    var viewMode by remember { mutableStateOf(HistoryViewMode.List) }
+
+    LaunchedEffect(importText) {
+        val text = importText ?: return@LaunchedEffect
+        val trimmed = text.trim()
+        if (trimmed.startsWith("{")) {
+            viewModel.parseBackupJson(
+                text = trimmed,
+                onReady = { pendingBackup = it },
+                onError = { toastMessage = it },
+            )
+        } else {
+            viewModel.parseCsvImport(
+                text = trimmed,
+                onReady = { records ->
+                    if (records.isEmpty()) {
+                        toastMessage = "CSV 中没有可导入的记录"
+                    } else {
+                        pendingCsvRecords = records
+                    }
+                },
+                onError = { toastMessage = it },
+            )
+        }
+        onImportConsumed()
+    }
 
     ScreenBackground(modifier = modifier) {
         Column(
@@ -137,6 +174,87 @@ fun HistoryScreen(
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = viewMode == HistoryViewMode.Calendar,
+                            onClick = { viewMode = HistoryViewMode.Calendar },
+                            label = { Text("日历") },
+                            leadingIcon = {
+                                Icon(
+                                    AppIcons.Calendar,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(start = 4.dp),
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AmberPrimary.copy(alpha = 0.18f),
+                                selectedLabelColor = AmberPrimary,
+                            ),
+                        )
+                        FilterChip(
+                            selected = viewMode == HistoryViewMode.List,
+                            onClick = { viewMode = HistoryViewMode.List },
+                            label = { Text("列表") },
+                            leadingIcon = {
+                                Icon(
+                                    AppIcons.History,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(start = 4.dp),
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AmberPrimary.copy(alpha = 0.18f),
+                                selectedLabelColor = AmberPrimary,
+                            ),
+                        )
+                    }
+                }
+
+                when (viewMode) {
+                    HistoryViewMode.Calendar -> {
+                        state.cycle?.let { cycle ->
+                            item {
+                                CycleCalendarCard(
+                                    cycle = cycle,
+                                    records = state.records.map { it.record },
+                                    settings = settings,
+                                    onDayClick = { day ->
+                                        editing = recordOrPlaceholder(
+                                            day,
+                                            state.records.map { it.record },
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    HistoryViewMode.List -> {
+                        if (state.records.isEmpty()) {
+                            item {
+                                AppCard {
+                                    Text(
+                                        "本周期暂无记录",
+                                        modifier = Modifier.padding(24.dp),
+                                        color = TextSecondary,
+                                    )
+                                }
+                            }
+                        }
+                        items(state.records, key = { it.record.shiftDate }) { detail ->
+                            HistoryRecordCard(
+                                detail = detail,
+                                onClick = { editing = detail.record },
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         OutlinedButton(
@@ -146,8 +264,28 @@ fun HistoryScreen(
                             Icon(AppIcons.Add, contentDescription = null)
                             Text(" 补录", modifier = Modifier.padding(start = 4.dp))
                         }
+                        OutlinedButton(
+                            onClick = { viewModel.buildBackup(onExportBackup) },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("备份")
+                        }
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = onPickImport,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("恢复")
+                        }
                         Button(
-                            onClick = { viewModel.buildExport(onExport) },
+                            onClick = { viewModel.buildExport(onExportCsv) },
                             modifier = Modifier.weight(1f),
                             shape = ButtonShape,
                             colors = ButtonDefaults.buttonColors(containerColor = AmberPrimary),
@@ -158,65 +296,13 @@ fun HistoryScreen(
                     }
                 }
 
-                if (state.records.isEmpty()) {
+                toastMessage?.let { message ->
                     item {
-                        AppCard {
-                            Text(
-                                "本周期暂无记录",
-                                modifier = Modifier.padding(24.dp),
-                                color = TextSecondary,
-                            )
-                        }
-                    }
-                }
-
-                items(state.records, key = { it.record.shiftDate }) { detail ->
-                    AppCard(
-                        modifier = Modifier.clickable { editing = detail.record },
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    detail.record.shiftDate,
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                                detail.hoursWorked?.let {
-                                    Text(
-                                        "${"%.1f".format(it)}h",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                    )
-                                }
-                            }
-                            Text(
-                                "${ShiftCalculator.formatTime(detail.record.clockInTime).take(5)} → " +
-                                    ShiftCalculator.formatTime(detail.record.clockOutTime).take(5),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontFamily = FontFamily.Monospace,
-                                color = TextSecondary,
-                            )
-                            if (detail.note.isNotBlank()) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    detail.note.split(";").filter { it.isNotBlank() }.forEach { tag ->
-                                        val status = when (tag) {
-                                            "迟到" -> com.clockin.app.domain.PunchStatus.LATE
-                                            "早退" -> com.clockin.app.domain.PunchStatus.EARLY
-                                            "缺卡" -> com.clockin.app.domain.PunchStatus.MISSED_OUT
-                                            else -> com.clockin.app.domain.PunchStatus.MISSED_OUT
-                                        }
-                                        StatusChip(tag, status)
-                                    }
-                                }
-                            }
-                        }
+                        Text(
+                            message,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp),
+                        )
                     }
                 }
             }
@@ -235,6 +321,38 @@ fun HistoryScreen(
             onDelete = {
                 viewModel.deleteRecord(record.shiftDate)
                 editing = null
+            },
+        )
+    }
+
+    pendingBackup?.let { backup ->
+        RestoreBackupDialog(
+            backup = backup,
+            onDismiss = { pendingBackup = null },
+            onMerge = {
+                viewModel.restoreBackup(backup, replaceExisting = false) { message ->
+                    toastMessage = message
+                    pendingBackup = null
+                }
+            },
+            onReplaceAll = {
+                viewModel.restoreBackup(backup, replaceExisting = true) { message ->
+                    toastMessage = message
+                    pendingBackup = null
+                }
+            },
+        )
+    }
+
+    pendingCsvRecords?.let { records ->
+        RestoreCsvDialog(
+            recordCount = records.size,
+            onDismiss = { pendingCsvRecords = null },
+            onConfirm = {
+                viewModel.mergeCsvRecords(records) { message ->
+                    toastMessage = message
+                    pendingCsvRecords = null
+                }
             },
         )
     }

@@ -32,6 +32,7 @@ class ClockInApplication : Application() {
         repository = ClockRepository(
             dao = db.clockRecordDao(),
             settingsRepository = settingsRepository,
+            db = db,
             onRecordsChanged = { refreshWidgets() },
             onSettingsChanged = { scheduleWidgetRefreshJobs() },
         )

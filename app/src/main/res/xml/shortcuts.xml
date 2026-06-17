@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_schedule"
+        android:shortcutId="clock_in"
+        android:shortcutShortLabel="@string/shortcut_clock_in">
+        <intent
+            android:action="com.clockin.app.action.SHORTCUT_CLOCK_IN"
+            android:targetClass="com.clockin.app.ShortcutPunchActivity"
+            android:targetPackage="com.clockin.app">
+            <extra
+                android:name="punch_type"
+                android:value="clock_in" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_history"
+        android:shortcutShortLabel="@string/shortcut_clock_out"
+        android:shortcutId="clock_out">
+        <intent
+            android:action="com.clockin.app.action.SHORTCUT_CLOCK_OUT"
+            android:targetClass="com.clockin.app.ShortcutPunchActivity"
+            android:targetPackage="com.clockin.app">
+            <extra
+                android:name="punch_type"
+                android:value="clock_out" />
+        </intent>
+    </shortcut>
+</shortcuts>
