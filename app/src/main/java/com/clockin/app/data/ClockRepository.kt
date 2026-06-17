@@ -16,6 +16,7 @@ class ClockRepository(
     private val dao: ClockRecordDao,
     private val settingsRepository: SettingsRepository,
     private val onRecordsChanged: () -> Unit = {},
+    private val onSettingsChanged: () -> Unit = {},
 ) {
     val settings: Flow<AppSettings> = settingsRepository.settings
 
@@ -84,6 +85,7 @@ class ClockRepository(
 
     suspend fun updateSettings(settings: AppSettings) {
         settingsRepository.updateSettings(settings)
+        onSettingsChanged()
     }
 
     suspend fun getCycleRecords(cycle: PayCycle): List<ClockRecord> =

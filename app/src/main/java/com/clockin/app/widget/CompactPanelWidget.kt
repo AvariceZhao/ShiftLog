@@ -43,4 +43,14 @@ private fun WidgetSnapshotContent(appWidgetId: Int) {
 
 class CompactPanelWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = CompactPanelWidget()
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        (context.applicationContext as? com.clockin.app.ClockInApplication)?.scheduleWidgetRefreshJobs()
+    }
+
+    override fun onDisabled(context: Context) {
+        (context.applicationContext as? com.clockin.app.ClockInApplication)?.cancelWidgetRefreshJobs()
+        super.onDisabled(context)
+    }
 }

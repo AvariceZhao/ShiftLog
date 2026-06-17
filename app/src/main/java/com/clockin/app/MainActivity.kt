@@ -18,17 +18,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.history.HistoryScreen
 import com.clockin.app.ui.home.HomeScreen
 import com.clockin.app.ui.settings.SettingsScreen
+import com.clockin.app.ui.settings.UpdateAvailableDialog
 import com.clockin.app.ui.theme.ClockInTheme
 import com.clockin.app.ui.theme.NightSurface
 import com.clockin.app.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val exportLauncher = registerForActivityResult(
@@ -54,10 +58,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val repository = (application as ClockInApplication).repository
+        val updateCoordinator = (application as ClockInApplication).updateCoordinator
         (application as ClockInApplication).refreshWidgets()
 
         setContent {
             ClockInTheme {
+                val scope = rememberCoroutineScope()
+                val promptRelease by updateCoordinator.promptRelease.collectAsStateWithLifecycle()
                 var tab by remember { mutableIntStateOf(0) }
                 val tabs = listOf<Triple<Int, String, ImageVector>>(
                     Triple(0, "打卡", AppIcons.Schedule),
@@ -114,6 +121,18 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(padding),
                         )
                     }
+                }
+
+                promptRelease?.let { release ->
+                    UpdateAvailableDialog(
+                        release = release,
+                        onDismiss = { updateCoordinator.clearPrompt() },
+                        onDismissVersion = {
+                            scope.launch {
+                                updateCoordinator.dismissRelease(release.tagName)
+                            }
+                        },
+                    )
                 }
             }
         }

@@ -6,7 +6,7 @@
     android:minResizeHeight="110dp"
     android:targetCellWidth="2"
     android:targetCellHeight="2"
-    android:updatePeriodMillis="0"
+    android:updatePeriodMillis="3600000"
     android:description="@string/widget_compact_panel_desc"
     android:initialLayout="@layout/widget_loading"
     android:previewLayout="@layout/widget_preview_compact_panel"

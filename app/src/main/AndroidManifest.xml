@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <application
         android:name=".ClockInApplication"
         android:allowBackup="true"
@@ -46,6 +50,32 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_compact_panel_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WidgetDayChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".widget.WidgetClockInAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.clockin.app.widget.ACTION_CLOCK_IN_REFRESH" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".widget.WidgetBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
         </receiver>
 
         <activity

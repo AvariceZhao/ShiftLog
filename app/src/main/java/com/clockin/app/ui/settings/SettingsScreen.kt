@@ -1,5 +1,6 @@
 package com.clockin.app.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,6 +41,7 @@ import com.clockin.app.ui.theme.ButtonShape
 import com.clockin.app.ui.theme.NightBorder
 import com.clockin.app.ui.theme.NightSurfaceHigh
 import com.clockin.app.ui.theme.StatusMissed
+import com.clockin.app.ui.theme.TextMuted
 import com.clockin.app.ui.theme.TextSecondary
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -160,6 +163,7 @@ fun SettingsScreen(
     var form by remember(saved) { mutableStateOf(SettingsForm.from(saved)) }
     var message by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
+    var showAbout by remember { mutableStateOf(false) }
 
     ScreenBackground(modifier = modifier) {
         Column(
@@ -289,7 +293,22 @@ fun SettingsScreen(
                     color = if (isError) StatusMissed else MaterialTheme.colorScheme.primary,
                 )
             }
+
+            Text(
+                "ShiftLog · AvariceZhao",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 8.dp)
+                    .clickable { showAbout = true },
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelMedium,
+                color = TextMuted,
+            )
         }
+    }
+
+    if (showAbout) {
+        AboutDialog(onDismiss = { showAbout = false })
     }
 }
 
