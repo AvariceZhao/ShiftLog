@@ -2,6 +2,7 @@ package com.clockin.app.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,11 +41,17 @@ fun AboutDialog(onDismiss: () -> Unit) {
     var pendingRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
     var checkHint by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
-    val version = remember {
+    val versionLabel = remember {
         runCatching {
             @Suppress("DEPRECATION")
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName
-        }.getOrDefault("—")
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.longVersionCode
+            } else {
+                info.versionCode.toLong()
+            }
+            "版本 ${info.versionName} ($code)"
+        }.getOrDefault("版本 —")
     }
 
     pendingRelease?.let { release ->
@@ -74,7 +81,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "版本 $version",
+                    versionLabel,
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary,
                 )

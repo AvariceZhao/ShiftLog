@@ -5,6 +5,10 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
+import java.io.File
+import java.util.Properties
+
 android {
     namespace = "com.clockin.app"
     compileSdk = 35
@@ -15,6 +19,26 @@ android {
         targetSdk = 34
         versionCode = 6
         versionName = "1.0.5"
+    }
+
+    signingConfigs {
+        val keystorePropertiesFile = rootProject.file("keystore.properties")
+        if (keystorePropertiesFile.exists()) {
+            val keystoreProperties = Properties().apply {
+                keystorePropertiesFile.inputStream().use { load(it) }
+            }
+            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            create("release") {
+                storeFile = if (File(storeFilePath).isAbsolute) {
+                    file(storeFilePath)
+                } else {
+                    rootProject.file(storeFilePath)
+                }
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -33,6 +57,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 
@@ -47,6 +72,14 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    @Suppress("DEPRECATION")
+    applicationVariants.configureEach {
+        outputs.configureEach {
+            (this as BaseVariantOutputImpl).outputFileName =
+                "ShiftLog-v${versionName}-arm64-${buildType.name}.apk"
+        }
     }
 }
 
@@ -80,4 +113,16 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
+}
+
+// 构建后复制到 app/release/，与 Android Studio 导出路径一致
+val releaseApkVersion = android.defaultConfig.versionName
+tasks.register<Copy>("packageReleaseApk") {
+    group = "build"
+    description = "assembleRelease 并复制到 app/release/ShiftLog-v{version}-arm64-release.apk"
+    dependsOn("assembleRelease")
+    from(layout.buildDirectory.dir("outputs/apk/release"))
+    into(rootProject.layout.projectDirectory.dir("app/release"))
+    include("*.apk")
+    rename { "ShiftLog-v${releaseApkVersion}-arm64-release.apk" }
 }
