@@ -6,42 +6,31 @@ import org.junit.Test
 
 class CsvExporterTest {
     private val settings = defaultSettings()
-    private val cycle = PayCycle(date(2026, 6, 9), date(2026, 7, 8))
-    private val progress = TargetProgress(
-        targetDays = 21,
-        targetHours = 160f,
-        clockedDays = 1,
-        totalHours = 21.93,
-        remainingDays = 20,
-        remainingHours = 138.07,
-        currentDailyAvg = 21.93,
-        cycleDaysRemaining = 30,
-        requiredDailyByTargetDays = 6.9,
-        requiredDailyByTargetDaysUnreachable = false,
-        requiredDailyByCycleDays = 4.6,
-        requiredDailyByCycleDaysUnreachable = false,
-        daysTargetMetHoursNotMet = false,
-    )
 
     @Test
-    fun export_usesExcelSafeSlashDates_notMinusDates() {
+    fun export_usesExcelSafeSlashDates_andIncludesAllRecords() {
         val clockIn = millisAt(date(2026, 6, 16), java.time.LocalTime.of(7, 2))
         val clockOut = millisAt(date(2026, 6, 17), java.time.LocalTime.of(4, 58))
         val csv = CsvExporter.export(
-            cycle = cycle,
             records = listOf(
                 ClockRecord(
                     shiftDate = "2026-06-16",
                     clockInTime = clockIn,
                     clockOutTime = clockOut,
                 ),
+                ClockRecord(
+                    shiftDate = "2026-05-01",
+                    clockInTime = millisAt(date(2026, 5, 1), java.time.LocalTime.of(7, 0)),
+                    clockOutTime = millisAt(date(2026, 5, 2), java.time.LocalTime.of(5, 0)),
+                ),
             ),
             settings = settings,
-            progress = progress,
         )
 
-        assertTrue(csv.contains("# 周期,2026/06/09,2026/07/08"))
+        assertTrue(csv.contains("# 范围,全部周期"))
+        assertTrue(csv.contains("# 记录数,2"))
         assertTrue(csv.contains("2026/06/16,07:02,04:58,21.93,迟到"))
+        assertTrue(csv.contains("2026/05/01,07:00,05:00"))
         assertFalse(csv.contains("2026-06-16,07:02"))
     }
 }

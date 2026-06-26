@@ -33,10 +33,32 @@ class ShiftCalculatorTest {
     }
 
     @Test
-    fun resolveActiveShiftDate_prefersOpenShiftWithoutClockOut() {
-        val open = ClockRecord("2026-06-15", clockInTime = 1L, clockOutTime = null)
+    fun resolveActiveShiftDate_prefersOpenShiftWithinShiftWindow() {
+        val open = ClockRecord("2026-06-16", clockInTime = 1L, clockOutTime = null)
+        val now = LocalDateTime.of(2026, 6, 17, 4, 30)
+        assertEquals("2026-06-16", ShiftCalculator.resolveActiveShiftDate(now, settings, open))
+    }
+
+    @Test
+    fun resolveActiveShiftDate_ignoresOpenShiftAfterShiftEnded() {
+        val open = ClockRecord("2026-06-16", clockInTime = 1L, clockOutTime = null)
         val now = LocalDateTime.of(2026, 6, 17, 7, 0)
-        assertEquals("2026-06-15", ShiftCalculator.resolveActiveShiftDate(now, settings, open))
+        assertEquals("2026-06-17", ShiftCalculator.resolveActiveShiftDate(now, settings, open))
+    }
+
+    @Test
+    fun openShiftBlocksClockIn_onlyWhileShiftStillActive() {
+        val open = ClockRecord("2026-06-16", clockInTime = 1L, clockOutTime = null)
+        val beforeEnd = LocalDateTime.of(2026, 6, 17, 4, 30)
+        val afterEnd = LocalDateTime.of(2026, 6, 17, 7, 0)
+        assertEquals(
+            true,
+            ShiftCalculator.openShiftBlocksClockIn(beforeEnd, settings, open),
+        )
+        assertEquals(
+            false,
+            ShiftCalculator.openShiftBlocksClockIn(afterEnd, settings, open),
+        )
     }
 
     @Test

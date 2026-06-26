@@ -11,6 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.clockin.app.domain.StatsCalculator
 import com.clockin.app.domain.TargetProgress
@@ -50,11 +53,18 @@ fun TargetProgressCard(progress: TargetProgress, modifier: Modifier = Modifier) 
                 label = "出勤天数",
                 progress = daysProgress,
                 caption = "${progress.clockedDays} / ${progress.targetDays} 天",
+                captionStyle = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                ),
             )
             ProgressBar(
                 label = "累计工时",
                 progress = hoursProgress,
                 caption = "${"%.1f".format(progress.totalHours)} / ${progress.targetHours}h",
+                captionStyle = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.Monospace,
+                ),
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

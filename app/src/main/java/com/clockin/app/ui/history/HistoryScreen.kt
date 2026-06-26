@@ -62,7 +62,8 @@ fun HistoryScreen(
     var pendingBackup by remember { mutableStateOf<AppBackup?>(null) }
     var pendingCsvRecords by remember { mutableStateOf<List<ClockRecord>?>(null) }
     var toastMessage by remember { mutableStateOf<String?>(null) }
-    var viewMode by remember { mutableStateOf(HistoryViewMode.List) }
+    var viewMode by remember { mutableStateOf(HistoryViewMode.Calendar) }
+    var showExportDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(importText) {
         val text = importText ?: return@LaunchedEffect
@@ -141,32 +142,6 @@ fun HistoryScreen(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                state.stats?.let { stats ->
-                    item {
-                        AppCard {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text("周期统计", style = MaterialTheme.typography.titleLarge)
-                                Text(
-                                    "${stats.clockedDays} 天 · ${"%.1f".format(stats.totalHours)}h",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    Text("迟到 ${stats.lateCount}", color = TextSecondary)
-                                    Text("早退 ${stats.earlyCount}", color = TextSecondary)
-                                }
-                                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    Text("旷工 ${stats.absentCount}", color = TextSecondary)
-                                    Text("缺卡 ${stats.incompletePunchCount}", color = TextSecondary)
-                                }
-                            }
-                        }
-                    }
-                }
-
                 state.progress?.let { progress ->
                     item { TargetProgressCard(progress) }
                 }
@@ -264,28 +239,8 @@ fun HistoryScreen(
                             Icon(AppIcons.Add, contentDescription = null)
                             Text(" 补录", modifier = Modifier.padding(start = 4.dp))
                         }
-                        OutlinedButton(
-                            onClick = { viewModel.buildBackup(onExportBackup) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text("备份")
-                        }
-                    }
-                }
-
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        OutlinedButton(
-                            onClick = onPickImport,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text("恢复")
-                        }
                         Button(
-                            onClick = { viewModel.buildExport(onExportCsv) },
+                            onClick = { showExportDialog = true },
                             modifier = Modifier.weight(1f),
                             shape = ButtonShape,
                             colors = ButtonDefaults.buttonColors(containerColor = AmberPrimary),
@@ -293,6 +248,15 @@ fun HistoryScreen(
                             Icon(AppIcons.Export, contentDescription = null)
                             Text(" 导出", modifier = Modifier.padding(start = 4.dp))
                         }
+                    }
+                }
+
+                item {
+                    OutlinedButton(
+                        onClick = onPickImport,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("恢复")
                     }
                 }
 
@@ -353,6 +317,20 @@ fun HistoryScreen(
                     toastMessage = message
                     pendingCsvRecords = null
                 }
+            },
+        )
+    }
+
+    if (showExportDialog) {
+        ExportFormatDialog(
+            onDismiss = { showExportDialog = false },
+            onExportCsv = {
+                showExportDialog = false
+                viewModel.buildExport(onExportCsv)
+            },
+            onExportBackup = {
+                showExportDialog = false
+                viewModel.buildBackup(onExportBackup)
             },
         )
     }

@@ -19,11 +19,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -42,10 +40,6 @@ import com.clockin.app.ui.theme.CyanSecondary
 import com.clockin.app.ui.theme.NightBorder
 import com.clockin.app.ui.theme.NightSurfaceHigh
 import com.clockin.app.ui.theme.TextSecondary
-import kotlinx.coroutines.delay
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -54,12 +48,6 @@ fun HomeScreen(
 ) {
     val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(repository))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val now by produceState(initialValue = LocalDateTime.now()) {
-        while (true) {
-            value = LocalDateTime.now()
-            delay(1000)
-        }
-    }
 
     ScreenBackground(modifier = modifier) {
         Column(
@@ -71,33 +59,12 @@ fun HomeScreen(
         ) {
             SectionHeader(
                 title = "ShiftLog",
-                subtitle = "本周期 ${state.cycleLabel}",
+                subtitle = buildString {
+                    if (state.isReady) append("班次 ${state.shiftDate} · ")
+                    append("本周期 ${state.cycleLabel}")
+                },
                 icon = AppIcons.Schedule,
             )
-
-            AppCard {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        now.format(DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.CHINA)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                    )
-                    Text(
-                        now.format(DateTimeFormatter.ofPattern("HH:mm:ss")),
-                        style = MaterialTheme.typography.displayLarge,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                    Text(
-                        "班次 ${state.shiftDate}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
 
             AppCard {
                 Column(

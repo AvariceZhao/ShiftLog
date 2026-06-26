@@ -17,8 +17,8 @@ android {
         applicationId = "com.clockin.app"
         minSdk = 28
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.0.6"
+        versionCode = 8
+        versionName = "1.0.7"
     }
 
     signingConfigs {
@@ -108,6 +108,8 @@ dependencies {
     implementation("androidx.glance:glance-appwidget:1.1.1")
 
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

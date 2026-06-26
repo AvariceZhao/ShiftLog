@@ -49,6 +49,10 @@ class ClockRepository(
     suspend fun performClockIn(): PunchResult {
         val settings = settings.first()
         val now = LocalDateTime.now()
+        val open = dao.findLatestOpenShift()?.toDomain()
+        if (ShiftCalculator.openShiftBlocksClockIn(now, settings, open)) {
+            return PunchResult.AlreadyClockedIn
+        }
         val shiftDate = ShiftCalculator.currentShiftDate(now, settings)
         val existing = dao.getByShiftDate(shiftDate)?.toDomain()
         if (existing?.clockInTime != null) return PunchResult.AlreadyClockedIn

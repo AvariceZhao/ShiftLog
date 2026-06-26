@@ -90,14 +90,11 @@ class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
 
     fun buildExport(onReady: (content: String, fileName: String) -> Unit) {
         viewModelScope.launch {
-            val state = uiState.value
-            val cycle = state.cycle ?: return@launch
             val settings = settingsState.value
-            val records = repository.getCycleRecords(cycle)
-            val progress = StatsCalculator.targetProgress(records, settings, cycle)
+            val records = repository.getAllRecords()
             onReady(
-                CsvExporter.export(cycle, records, settings, progress),
-                CsvExporter.fileName(cycle),
+                CsvExporter.export(records, settings),
+                CsvExporter.fileName(),
             )
         }
     }

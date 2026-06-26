@@ -33,11 +33,36 @@ object ShiftCalculator {
         settings: AppSettings,
         openShift: ClockRecord?,
     ): String {
-        if (openShift != null && openShift.clockInTime != null && openShift.clockOutTime == null) {
+        if (openShift != null &&
+            openShift.clockInTime != null &&
+            openShift.clockOutTime == null &&
+            isOpenShiftStillActive(openShift, now, settings)
+        ) {
             return openShift.shiftDate
         }
         return currentShiftDate(now, settings)
     }
+
+    /** 未下班记录是否仍属于当前可操作窗口（标准下班时间之前仍可打下班卡） */
+    fun isOpenShiftStillActive(
+        openShift: ClockRecord,
+        now: LocalDateTime,
+        settings: AppSettings,
+    ): Boolean {
+        val shiftEnd = expectedShiftEnd(openShift.shiftDate.toLocalDate(), settings)
+        return now.isBefore(shiftEnd)
+    }
+
+    /** 存在未结束的开放班次时，应先打下班卡，不可开始新班次上班 */
+    fun openShiftBlocksClockIn(
+        now: LocalDateTime,
+        settings: AppSettings,
+        openShift: ClockRecord?,
+    ): Boolean =
+        openShift != null &&
+            openShift.clockInTime != null &&
+            openShift.clockOutTime == null &&
+            isOpenShiftStillActive(openShift, now, settings)
 
     fun hoursWorked(clockIn: Long, clockOut: Long): Double {
         val millis = (clockOut - clockIn).coerceAtLeast(0)

@@ -44,11 +44,35 @@ object GitHubUpdateChecker {
         val pageUrl = root.optString("html_url").trim().ifEmpty {
             "https://github.com/AvariceZhao/ShiftLog/releases/latest"
         }
+        val apkAsset = root.optJSONArray("assets")?.let(::pickApkAsset)
         return ReleaseInfo(
             tagName = tagName,
             versionName = versionName,
             releaseNotes = body,
             pageUrl = pageUrl,
+            apkDownloadUrl = apkAsset?.first,
+            apkSizeBytes = apkAsset?.second,
         )
+    }
+
+    /** 优先 arm64 release APK，否则取第一个 .apk */
+    internal fun pickApkAsset(assets: org.json.JSONArray): Pair<String, Long>? {
+        var fallback: Pair<String, Long>? = null
+        for (i in 0 until assets.length()) {
+            val asset = assets.getJSONObject(i)
+            val name = asset.optString("name")
+            if (!name.endsWith(".apk", ignoreCase = true)) continue
+            val url = asset.optString("browser_download_url").trim()
+            if (url.isEmpty()) continue
+            val size = asset.optLong("size", 0L).takeIf { it > 0L }
+            val entry = url to (size ?: 0L)
+            if (name.contains("arm64", ignoreCase = true) &&
+                name.contains("release", ignoreCase = true)
+            ) {
+                return entry
+            }
+            if (fallback == null) fallback = entry
+        }
+        return fallback
     }
 }

@@ -1,5 +1,6 @@
 package com.clockin.app.domain
 
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -9,21 +10,21 @@ object CsvExporter {
     private val EXCEL_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
 
     fun export(
-        cycle: PayCycle,
         records: List<ClockRecord>,
         settings: AppSettings,
-        progress: TargetProgress,
     ): String {
         val sb = StringBuilder()
-        sb.appendLine(
-            listOf(
-                "# 周期",
-                formatDate(cycle.start),
-                formatDate(cycle.end),
-            ).joinCsvRow(),
-        )
-        sb.appendLine("# 目标,${progress.targetDays}天,${progress.targetHours}h")
-        sb.appendLine("# 已完成,${progress.clockedDays}天,${"%.1f".format(progress.totalHours)}h")
+        val clockedDays = records.count { it.clockInTime != null }
+        var totalHours = 0.0
+        records.forEach { record ->
+            ShiftCalculator.buildRecordDetail(record, settings).hoursWorked?.let {
+                totalHours += it
+            }
+        }
+        sb.appendLine("# 范围,全部周期")
+        sb.appendLine("# 记录数,${records.size}")
+        sb.appendLine("# 目标,${settings.targetDays}天,${settings.targetHours}h")
+        sb.appendLine("# 合计,${clockedDays}天,${"%.1f".format(totalHours)}h")
         sb.appendLine("日期,上班时间,下班时间,工时(小时),备注")
         records.sortedByDescending { it.shiftDate }.forEach { record ->
             val detail = ShiftCalculator.buildRecordDetail(record, settings)
@@ -43,9 +44,11 @@ object CsvExporter {
         return "\uFEFF" + sb.toString()
     }
 
-    fun fileName(cycle: PayCycle): String {
-        val fmt = DateTimeFormatter.ISO_LOCAL_DATE
-        return "打卡_${cycle.start.format(fmt)}_${cycle.end.format(fmt)}.csv"
+    fun fileName(zoneId: ZoneId = ZoneId.systemDefault()): String {
+        val stamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")
+            .withZone(zoneId)
+            .format(Instant.now())
+        return "ShiftLog_打卡_$stamp.csv"
     }
 
     private fun formatDate(isoDate: String): String =
