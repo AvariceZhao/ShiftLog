@@ -1,6 +1,7 @@
 package com.clockin.app.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -168,8 +169,27 @@ class StatsCalculatorTest {
         val progress = StatsCalculator.targetProgress(records, settings, cycle, today = date(2026, 6, 30))
         assertTrue(progress.remainingDays <= 0)
         assertTrue(progress.remainingHours <= 0)
+        assertTrue(progress.isTargetMet)
         assertNull(progress.requiredDailyByTargetDays)
         assertNull(progress.requiredDailyByCycleDays)
+    }
+
+    @Test
+    fun targetProgress_isTargetMet_falseWhenOnlyDaysMet() {
+        val records = (1..21).map { day ->
+            ClockRecord(
+                shiftDate = "2026-06-${"%02d".format(day)}",
+                clockInTime = millisAt(date(2026, 6, day), LocalTime.of(7, 0)),
+                clockOutTime = millisAt(date(2026, 6, day + 1), LocalTime.of(5, 0)),
+            )
+        }
+        val progress = StatsCalculator.targetProgress(
+            records = records,
+            settings = settings.copy(targetHours = 500f),
+            cycle = cycle,
+            today = date(2026, 6, 30),
+        )
+        assertFalse(progress.isTargetMet)
     }
 
     @Test

@@ -18,17 +18,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.components.AppCard
+import com.clockin.app.ui.components.FireworksOverlay
 import com.clockin.app.ui.components.ScreenBackground
 import com.clockin.app.ui.components.SectionHeader
 import com.clockin.app.ui.components.StatusChip
@@ -48,15 +54,23 @@ fun HomeScreen(
 ) {
     val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(repository))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showFireworks by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel) {
+        viewModel.fireworksEvent.collect {
+            showFireworks = true
+        }
+    }
 
     ScreenBackground(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
             SectionHeader(
                 title = "ShiftLog",
                 subtitle = buildString {
@@ -174,6 +188,16 @@ fun HomeScreen(
             }
 
             state.progress?.let { TargetProgressCard(it) }
+            }
+
+            if (showFireworks) {
+                FireworksOverlay(
+                    onFinished = { showFireworks = false },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(10f),
+                )
+            }
         }
     }
 }

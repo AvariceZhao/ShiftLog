@@ -74,7 +74,10 @@ data class TargetProgress(
     val requiredDailyByCycleDaysUnreachable: Boolean,
     /** 出勤天数已满、工时未满：只展示剩余工时，不展示目标日均 */
     val daysTargetMetHoursNotMet: Boolean,
-)
+) {
+    val isTargetMet: Boolean
+        get() = remainingDays <= 0 && remainingHours <= 0
+}
 
 object DateFormats {
     val SHIFT_DATE: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE

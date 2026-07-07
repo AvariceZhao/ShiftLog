@@ -6,16 +6,21 @@ import androidx.lifecycle.viewModelScope
 import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.AppTimeTicker
 import com.clockin.app.domain.CycleCalculator
+import com.clockin.app.domain.PunchResult
 import com.clockin.app.domain.RecordDetail
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.StatsCalculator
 import com.clockin.app.domain.TargetProgress
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 data class HomeUiState(
     val isReady: Boolean = false,
@@ -28,6 +33,9 @@ data class HomeUiState(
 )
 
 class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
+    private val _fireworksEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val fireworksEvent = _fireworksEvent.asSharedFlow()
+
     val uiState: StateFlow<HomeUiState> =
         combine(repository.settings, AppTimeTicker.localDateFlow()) { settings, today ->
             settings to today
@@ -52,11 +60,29 @@ class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
     fun clockIn() {
-        viewModelScope.launch { repository.performClockIn() }
+        viewModelScope.launch {
+            if (repository.performClockIn() == PunchResult.Success) {
+                celebrateIfTargetMet()
+            }
+        }
     }
 
     fun clockOut() {
-        viewModelScope.launch { repository.performClockOut() }
+        viewModelScope.launch {
+            if (repository.performClockOut() == PunchResult.Success) {
+                celebrateIfTargetMet()
+            }
+        }
+    }
+
+    private suspend fun celebrateIfTargetMet() {
+        val settings = repository.settings.first()
+        val today = LocalDate.now()
+        val cycle = CycleCalculator.currentCycle(settings.cycleStartDay, today)
+        val records = repository.getCycleRecords(cycle)
+        if (StatsCalculator.targetProgress(records, settings, cycle, today).isTargetMet) {
+            _fireworksEvent.emit(Unit)
+        }
     }
 
     class Factory(private val repository: ClockRepository) : ViewModelProvider.Factory {
