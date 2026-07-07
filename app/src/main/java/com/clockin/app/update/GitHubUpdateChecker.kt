@@ -37,11 +37,11 @@ object GitHubUpdateChecker {
 
     internal fun parseReleaseJson(json: String): ReleaseInfo? {
         val root = JSONObject(json)
-        val tagName = root.optString("tag_name").trim()
+        val tagName = root.optString("tag_name", "").orEmpty().trim()
         if (tagName.isEmpty()) return null
         val versionName = tagName.removePrefix("v").removePrefix("V")
-        val body = root.optString("body").trim().ifEmpty { "暂无更新说明" }
-        val pageUrl = root.optString("html_url").trim().ifEmpty {
+        val body = root.optString("body", "").orEmpty().trim().ifEmpty { "暂无更新说明" }
+        val pageUrl = root.optString("html_url", "").orEmpty().trim().ifEmpty {
             "https://github.com/AvariceZhao/ShiftLog/releases/latest"
         }
         val apkAsset = root.optJSONArray("assets")?.let(::pickApkAsset)
@@ -60,9 +60,9 @@ object GitHubUpdateChecker {
         var fallback: Pair<String, Long>? = null
         for (i in 0 until assets.length()) {
             val asset = assets.getJSONObject(i)
-            val name = asset.optString("name")
+            val name = asset.optString("name", "").orEmpty()
             if (!name.endsWith(".apk", ignoreCase = true)) continue
-            val url = asset.optString("browser_download_url").trim()
+            val url = asset.optString("browser_download_url", "").orEmpty().trim()
             if (url.isEmpty()) continue
             val size = asset.optLong("size", 0L).takeIf { it > 0L }
             val entry = url to (size ?: 0L)

@@ -17,8 +17,8 @@ android {
         applicationId = "com.clockin.app"
         minSdk = 28
         targetSdk = 34
-        versionCode = 9
-        versionName = "1.0.8"
+        versionCode = 10
+        versionName = "1.0.9"
     }
 
     signingConfigs {
@@ -119,6 +119,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }
 
 // 构建后复制到 app/release/，与 Android Studio 导出路径一致

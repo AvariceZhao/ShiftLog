@@ -82,6 +82,7 @@ fun UpdateAvailableDialog(
             downloader.download(
                 url = url,
                 fileName = "ShiftLog-${release.tagName}.apk",
+                expectedSizeBytes = release.apkSizeBytes?.takeIf { it > 0L },
             ) { progress ->
                 downloadState = ApkDownloadUiState.Downloading(progress)
             }.onSuccess { file ->
