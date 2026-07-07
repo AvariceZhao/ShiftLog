@@ -74,6 +74,10 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     @Suppress("DEPRECATION")
     applicationVariants.configureEach {
         outputs.configureEach {
