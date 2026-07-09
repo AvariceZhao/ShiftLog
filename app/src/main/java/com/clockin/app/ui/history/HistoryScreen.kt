@@ -7,11 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,11 +37,6 @@ import com.clockin.app.ui.theme.AmberPrimary
 import com.clockin.app.ui.theme.ButtonShape
 import com.clockin.app.ui.theme.TextSecondary
 
-private enum class HistoryViewMode {
-    Calendar,
-    List,
-}
-
 @Composable
 fun HistoryScreen(
     repository: ClockRepository,
@@ -62,7 +54,6 @@ fun HistoryScreen(
     var pendingBackup by remember { mutableStateOf<AppBackup?>(null) }
     var pendingCsvRecords by remember { mutableStateOf<List<ClockRecord>?>(null) }
     var toastMessage by remember { mutableStateOf<String?>(null) }
-    var viewMode by remember { mutableStateOf(HistoryViewMode.Calendar) }
     var showExportDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(importText) {
@@ -146,84 +137,19 @@ fun HistoryScreen(
                     item { TargetProgressCard(progress) }
                 }
 
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        FilterChip(
-                            selected = viewMode == HistoryViewMode.Calendar,
-                            onClick = { viewMode = HistoryViewMode.Calendar },
-                            label = { Text("日历") },
-                            leadingIcon = {
-                                Icon(
-                                    AppIcons.Calendar,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(start = 4.dp),
+                state.cycle?.let { cycle ->
+                    item {
+                        CycleCalendarCard(
+                            cycle = cycle,
+                            records = state.records.map { it.record },
+                            settings = settings,
+                            onDayClick = { day ->
+                                editing = recordOrPlaceholder(
+                                    day,
+                                    state.records.map { it.record },
                                 )
                             },
-                            modifier = Modifier.weight(1f),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AmberPrimary.copy(alpha = 0.18f),
-                                selectedLabelColor = AmberPrimary,
-                            ),
                         )
-                        FilterChip(
-                            selected = viewMode == HistoryViewMode.List,
-                            onClick = { viewMode = HistoryViewMode.List },
-                            label = { Text("列表") },
-                            leadingIcon = {
-                                Icon(
-                                    AppIcons.History,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(start = 4.dp),
-                                )
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AmberPrimary.copy(alpha = 0.18f),
-                                selectedLabelColor = AmberPrimary,
-                            ),
-                        )
-                    }
-                }
-
-                when (viewMode) {
-                    HistoryViewMode.Calendar -> {
-                        state.cycle?.let { cycle ->
-                            item {
-                                CycleCalendarCard(
-                                    cycle = cycle,
-                                    records = state.records.map { it.record },
-                                    settings = settings,
-                                    onDayClick = { day ->
-                                        editing = recordOrPlaceholder(
-                                            day,
-                                            state.records.map { it.record },
-                                        )
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    HistoryViewMode.List -> {
-                        if (state.records.isEmpty()) {
-                            item {
-                                AppCard {
-                                    Text(
-                                        "本周期暂无记录",
-                                        modifier = Modifier.padding(24.dp),
-                                        color = TextSecondary,
-                                    )
-                                }
-                            }
-                        }
-                        items(state.records, key = { it.record.shiftDate }) { detail ->
-                            HistoryRecordCard(
-                                detail = detail,
-                                onClick = { editing = detail.record },
-                            )
-                        }
                     }
                 }
 

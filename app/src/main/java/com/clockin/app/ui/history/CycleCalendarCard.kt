@@ -130,7 +130,7 @@ fun CycleCalendarCard(
                         }
                         val hoursLabel = record?.let { rec ->
                             ShiftCalculator.buildRecordDetail(rec, settings).hoursWorked
-                                ?.let(ShiftCalculator::formatHoursShort)
+                                ?.let { ShiftCalculator.formatHoursShort(it, settings.calendarHoursDecimalPlaces) }
                         }
                         CalendarDayCell(
                             day = day.dayOfMonth,

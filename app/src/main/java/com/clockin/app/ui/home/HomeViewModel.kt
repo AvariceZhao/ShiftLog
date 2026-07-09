@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.clockin.app.data.ClockRepository
+import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.AppTimeTicker
 import com.clockin.app.domain.CycleCalculator
 import com.clockin.app.domain.PunchResult
@@ -35,6 +36,12 @@ data class HomeUiState(
 class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
     private val _fireworksEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val fireworksEvent = _fireworksEvent.asSharedFlow()
+
+    val settings: StateFlow<AppSettings> = repository.settings.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        AppSettings(),
+    )
 
     val uiState: StateFlow<HomeUiState> =
         combine(repository.settings, AppTimeTicker.localDateFlow()) { settings, today ->

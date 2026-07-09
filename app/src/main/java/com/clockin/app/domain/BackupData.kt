@@ -40,6 +40,8 @@ object BackupExporter {
         put("cycleStartDay", settings.cycleStartDay)
         put("targetDays", settings.targetDays)
         put("targetHours", settings.targetHours.toDouble())
+        put("calendarHoursDecimalPlaces", settings.calendarHoursDecimalPlaces)
+        put("showExpectedClockOut", settings.showExpectedClockOut)
     }
 
     private fun recordsToJson(records: List<ClockRecord>): JSONArray {
@@ -99,6 +101,8 @@ object BackupImporter {
         cycleStartDay = json.getInt("cycleStartDay").coerceIn(1, 28),
         targetDays = json.getInt("targetDays").coerceAtLeast(1),
         targetHours = json.getDouble("targetHours").toFloat().coerceAtLeast(0f),
+        calendarHoursDecimalPlaces = json.optInt("calendarHoursDecimalPlaces", 1).coerceIn(1, 2),
+        showExpectedClockOut = json.optBoolean("showExpectedClockOut", true),
     )
 
     private fun parseRecords(array: JSONArray): List<ClockRecord> {

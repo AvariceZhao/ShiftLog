@@ -149,7 +149,12 @@ fun StatRow(label: String, value: String, highlight: Boolean = false) {
 }
 
 @Composable
-fun TimeDisplay(time: String, label: String, modifier: Modifier = Modifier) {
+fun TimeDisplay(
+    time: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    hints: List<Pair<String, String>> = emptyList(),
+) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             label,
@@ -161,6 +166,21 @@ fun TimeDisplay(time: String, label: String, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.displayLarge.copy(fontSize = 32.sp),
             color = MaterialTheme.colorScheme.onSurface,
         )
+        if (hints.isNotEmpty()) {
+            Column(
+                modifier = Modifier.padding(top = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                hints.forEach { (hintLabel, hintTime) ->
+                    Text(
+                        "$hintLabel $hintTime",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+        }
     }
 }
 

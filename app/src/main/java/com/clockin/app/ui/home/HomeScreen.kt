@@ -31,6 +31,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.clockin.app.data.ClockRepository
+import com.clockin.app.domain.ExpectedClockOutCalculator
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.components.AppCard
@@ -54,6 +55,7 @@ fun HomeScreen(
 ) {
     val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(repository))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
     var showFireworks by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
@@ -107,6 +109,21 @@ fun HomeScreen(
                             Text("尚未打卡", color = TextSecondary)
                         }
                     } else {
+                        val expectedClockOut = if (settings.showExpectedClockOut) {
+                            state.progress?.let { progress ->
+                                ExpectedClockOutCalculator.calculate(
+                                    clockInMs = detail.record.clockInTime,
+                                    clockOutMs = detail.record.clockOutTime,
+                                    progress = progress,
+                                )
+                            }
+                        } else {
+                            null
+                        }
+                        val clockOutHints = buildList {
+                            expectedClockOut?.byTargetDays?.let { add(it.label to it.timeText) }
+                            expectedClockOut?.byCycleDays?.let { add(it.label to it.timeText) }
+                        }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -119,6 +136,7 @@ fun HomeScreen(
                             TimeDisplay(
                                 time = ShiftCalculator.formatTime(detail.record.clockOutTime).take(5),
                                 label = "下班",
+                                hints = clockOutHints,
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

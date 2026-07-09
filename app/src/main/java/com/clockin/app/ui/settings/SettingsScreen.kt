@@ -12,6 +12,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -56,6 +58,8 @@ private data class SettingsForm(
     val cycleStartDayText: String,
     val targetDaysText: String,
     val targetHoursText: String,
+    val calendarHoursDecimalPlaces: Int,
+    val showExpectedClockOut: Boolean,
 ) {
     companion object {
         fun from(settings: AppSettings): SettingsForm = SettingsForm(
@@ -65,6 +69,8 @@ private data class SettingsForm(
             cycleStartDayText = settings.cycleStartDay.toString(),
             targetDaysText = settings.targetDays.toString(),
             targetHoursText = settings.targetHours.toInputString(),
+            calendarHoursDecimalPlaces = settings.calendarHoursDecimalPlaces,
+            showExpectedClockOut = settings.showExpectedClockOut,
         )
     }
 
@@ -82,6 +88,8 @@ private data class SettingsForm(
                 cycleStartDay = cycleStartDay,
                 targetDays = targetDays,
                 targetHours = targetHours,
+                calendarHoursDecimalPlaces = calendarHoursDecimalPlaces.coerceIn(1, 2),
+                showExpectedClockOut = showExpectedClockOut,
             ),
         )
     }
@@ -236,6 +244,70 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                     )
+                }
+            }
+
+            AppCard {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("显示", style = MaterialTheme.typography.titleLarge)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("推荐下班时间", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "已上班未下班时，在打卡页显示预期下班时间",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                        Switch(
+                            checked = form.showExpectedClockOut,
+                            onCheckedChange = { form = form.copy(showExpectedClockOut = it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = AmberPrimary,
+                                checkedTrackColor = AmberPrimary.copy(alpha = 0.4f),
+                            ),
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("日历工时小数", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "历史页出勤日历格内工时显示精度",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            FilterChip(
+                                selected = form.calendarHoursDecimalPlaces == 1,
+                                onClick = { form = form.copy(calendarHoursDecimalPlaces = 1) },
+                                label = { Text("1 位") },
+                                modifier = Modifier.weight(1f),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AmberPrimary.copy(alpha = 0.18f),
+                                    selectedLabelColor = AmberPrimary,
+                                ),
+                            )
+                            FilterChip(
+                                selected = form.calendarHoursDecimalPlaces == 2,
+                                onClick = { form = form.copy(calendarHoursDecimalPlaces = 2) },
+                                label = { Text("2 位") },
+                                modifier = Modifier.weight(1f),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AmberPrimary.copy(alpha = 0.18f),
+                                    selectedLabelColor = AmberPrimary,
+                                ),
+                            )
+                        }
+                    }
                 }
             }
 

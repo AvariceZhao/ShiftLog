@@ -133,7 +133,10 @@ object ShiftCalculator {
     }
 
     /** 紧凑工时展示，用于日历格、小组件等窄空间 */
-    fun formatHoursShort(hours: Double): String = "${"%.1f".format(hours)}h"
+    fun formatHoursShort(hours: Double, decimalPlaces: Int = 1): String {
+        val places = decimalPlaces.coerceIn(1, 2)
+        return "${"%.${places}f".format(hours)}h"
+    }
 
     fun statusLabel(status: PunchStatus): String = when (status) {
         PunchStatus.NORMAL -> "正常"

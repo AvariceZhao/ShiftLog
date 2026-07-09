@@ -24,6 +24,8 @@ class SettingsRepository(private val context: Context) {
     private val cycleStartDayKey = intPreferencesKey("cycle_start_day")
     private val targetDaysKey = intPreferencesKey("target_days")
     private val targetHoursKey = floatPreferencesKey("target_hours")
+    private val calendarHoursDecimalPlacesKey = intPreferencesKey("calendar_hours_decimal_places")
+    private val showExpectedClockOutKey = booleanPreferencesKey("show_expected_clock_out")
 
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -37,6 +39,8 @@ class SettingsRepository(private val context: Context) {
             cycleStartDay = prefs[cycleStartDayKey] ?: 9,
             targetDays = prefs[targetDaysKey] ?: 21,
             targetHours = prefs[targetHoursKey] ?: 160f,
+            calendarHoursDecimalPlaces = (prefs[calendarHoursDecimalPlacesKey] ?: 1).coerceIn(1, 2),
+            showExpectedClockOut = prefs[showExpectedClockOutKey] ?: true,
         )
     }
 
@@ -48,6 +52,8 @@ class SettingsRepository(private val context: Context) {
             prefs[cycleStartDayKey] = settings.cycleStartDay.coerceIn(1, 28)
             prefs[targetDaysKey] = settings.targetDays.coerceAtLeast(1)
             prefs[targetHoursKey] = settings.targetHours.coerceAtLeast(0f)
+            prefs[calendarHoursDecimalPlacesKey] = settings.calendarHoursDecimalPlaces.coerceIn(1, 2)
+            prefs[showExpectedClockOutKey] = settings.showExpectedClockOut
         }
     }
 }

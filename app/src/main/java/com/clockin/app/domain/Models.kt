@@ -13,6 +13,10 @@ data class AppSettings(
     val cycleStartDay: Int = 9,
     val targetDays: Int = 21,
     val targetHours: Float = 160f,
+    /** 历史日历格内工时小数位数：1 或 2 */
+    val calendarHoursDecimalPlaces: Int = 1,
+    /** 打卡页是否显示推荐下班时间 */
+    val showExpectedClockOut: Boolean = true,
 )
 
 data class ClockRecord(
