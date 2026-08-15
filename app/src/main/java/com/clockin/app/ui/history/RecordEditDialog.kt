@@ -63,7 +63,7 @@ private enum class TimeFieldTarget {
     ExactOut,
 }
 
-private const val DEFAULT_DURATION_HOURS = "8"
+private const val DEFAULT_DURATION_HOURS = ""
 
 private val timeFormatter = DateTimeFormatter.ofPattern("H:mm")
 private val shiftDateDisplayFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd (E)", Locale.CHINA)
@@ -74,11 +74,14 @@ private val zoneId = ZoneId.systemDefault()
 fun RecordEditDialog(
     record: ClockRecord,
     settings: AppSettings,
+    startInExactTimeMode: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (ClockRecord) -> Unit,
     onDelete: () -> Unit,
 ) {
-    var mode by remember(record) { mutableStateOf(EditMode.Duration) }
+    var mode by remember(record, startInExactTimeMode) {
+        mutableStateOf(if (startInExactTimeMode) EditMode.ExactTime else EditMode.Duration)
+    }
     var shiftDate by remember(record.shiftDate) { mutableStateOf(record.shiftDate) }
     var durationText by remember(record) {
         mutableStateOf(record.toDurationText().ifEmpty { DEFAULT_DURATION_HOURS })
@@ -155,7 +158,7 @@ fun RecordEditDialog(
                                 durationText = text.filter { it.isDigit() || it == '.' }
                             },
                             label = { Text("工时 (小时)") },
-                            placeholder = { Text(DEFAULT_DURATION_HOURS) },
+                            placeholder = { Text("留空则仅补上班卡") },
                             modifier = Modifier.fillMaxWidth(),
                             colors = fieldColors,
                             singleLine = true,
@@ -176,7 +179,7 @@ fun RecordEditDialog(
                             onClick = { activeTimeField = TimeFieldTarget.DurationOut },
                         )
                         Text(
-                            "日期点日历选；时间点时钟选。下班可勾选「次日」",
+                            "下班留空且工时留空或为 0 时，仅补上班卡",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -475,10 +478,12 @@ private fun buildFromDuration(
     val outMs = optionalClockOutText.trim().takeIf { it.isNotEmpty() }?.let { text ->
         resolveClockOut(text, date, clockIn, clockOutNextDay)
     } ?: run {
-        val hours = durationText.trim().toFloatOrNull()
+        val hoursText = durationText.trim()
+        if (hoursText.isEmpty()) return@run null
+        val hours = hoursText.toFloatOrNull()
             ?: throw IllegalArgumentException("请输入有效工时，或选择下班时间")
-        if (hours <= 0f) throw IllegalArgumentException("工时必须大于 0")
-        inMs + (hours * 3_600_000f).toLong()
+        if (hours < 0f) throw IllegalArgumentException("工时不能为负数")
+        if (hours == 0f) null else inMs + (hours * 3_600_000f).toLong()
     }
 
     return ClockRecord(date.toShiftDateString(), inMs, outMs)

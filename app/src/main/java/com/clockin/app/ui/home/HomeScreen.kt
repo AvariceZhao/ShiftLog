@@ -33,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.ExpectedClockOutCalculator
 import com.clockin.app.domain.ShiftCalculator
+import com.clockin.app.domain.ClockRecord
 import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.components.AppCard
 import com.clockin.app.ui.components.FireworksOverlay
@@ -41,6 +42,7 @@ import com.clockin.app.ui.components.SectionHeader
 import com.clockin.app.ui.components.StatusChip
 import com.clockin.app.ui.components.TargetProgressCard
 import com.clockin.app.ui.components.TimeDisplay
+import com.clockin.app.ui.history.RecordEditDialog
 import com.clockin.app.ui.theme.AmberPrimary
 import com.clockin.app.ui.theme.ButtonShape
 import com.clockin.app.ui.theme.CyanSecondary
@@ -57,6 +59,7 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     var showFireworks by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<ClockRecord?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.fireworksEvent.collect {
@@ -131,12 +134,14 @@ fun HomeScreen(
                             TimeDisplay(
                                 time = ShiftCalculator.formatTime(detail.record.clockInTime).take(5),
                                 label = "上班",
+                                onClick = detail.record.clockInTime?.let { { editing = detail.record } },
                             )
                             Text("→", style = MaterialTheme.typography.headlineMedium, color = TextSecondary)
                             TimeDisplay(
                                 time = ShiftCalculator.formatTime(detail.record.clockOutTime).take(5),
                                 label = "下班",
                                 hints = clockOutHints,
+                                onClick = detail.record.clockOutTime?.let { { editing = detail.record } },
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -217,5 +222,22 @@ fun HomeScreen(
                 )
             }
         }
+    }
+
+    editing?.let { record ->
+        RecordEditDialog(
+            record = record,
+            settings = settings,
+            startInExactTimeMode = true,
+            onDismiss = { editing = null },
+            onSave = {
+                viewModel.saveRecord(it)
+                editing = null
+            },
+            onDelete = {
+                viewModel.deleteRecord(record.shiftDate)
+                editing = null
+            },
+        )
     }
 }

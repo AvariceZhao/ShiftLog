@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.AppTimeTicker
+import com.clockin.app.domain.ClockRecord
 import com.clockin.app.domain.CycleCalculator
 import com.clockin.app.domain.PunchResult
 import com.clockin.app.domain.RecordDetail
@@ -80,6 +81,14 @@ class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
                 celebrateIfTargetMet()
             }
         }
+    }
+
+    fun saveRecord(record: ClockRecord) {
+        viewModelScope.launch { repository.saveRecord(record) }
+    }
+
+    fun deleteRecord(shiftDate: String) {
+        viewModelScope.launch { repository.deleteRecord(shiftDate) }
     }
 
     private suspend fun celebrateIfTargetMet() {

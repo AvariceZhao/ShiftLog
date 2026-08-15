@@ -1,5 +1,6 @@
 package com.clockin.app.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -154,8 +155,12 @@ fun TimeDisplay(
     label: String,
     modifier: Modifier = Modifier,
     hints: List<Pair<String, String>> = emptyList(),
+    onClick: (() -> Unit)? = null,
 ) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
