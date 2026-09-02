@@ -7,18 +7,27 @@ import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.AppSettings
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class SettingsViewModel(private val repository: ClockRepository) : ViewModel() {
+    private val updateMutex = Mutex()
+
     val settings: StateFlow<AppSettings> = repository.settings.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         AppSettings(),
     )
 
-    fun save(settings: AppSettings) {
-        viewModelScope.launch { repository.updateSettings(settings) }
+    fun update(transform: (AppSettings) -> AppSettings) {
+        viewModelScope.launch {
+            updateMutex.withLock {
+                repository.updateSettings(transform(repository.settings.first()))
+            }
+        }
     }
 
     class Factory(private val repository: ClockRepository) : ViewModelProvider.Factory {

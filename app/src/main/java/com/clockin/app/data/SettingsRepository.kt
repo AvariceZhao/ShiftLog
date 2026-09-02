@@ -26,6 +26,8 @@ class SettingsRepository(private val context: Context) {
     private val targetHoursKey = floatPreferencesKey("target_hours")
     private val calendarHoursDecimalPlacesKey = intPreferencesKey("calendar_hours_decimal_places")
     private val showExpectedClockOutKey = booleanPreferencesKey("show_expected_clock_out")
+    private val showElapsedWorkTimeKey = booleanPreferencesKey("show_elapsed_work_time")
+    private val showHistoryCycleSummaryKey = booleanPreferencesKey("show_history_cycle_summary")
 
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -41,6 +43,8 @@ class SettingsRepository(private val context: Context) {
             targetHours = prefs[targetHoursKey] ?: 160f,
             calendarHoursDecimalPlaces = (prefs[calendarHoursDecimalPlacesKey] ?: 1).coerceIn(1, 2),
             showExpectedClockOut = prefs[showExpectedClockOutKey] ?: true,
+            showElapsedWorkTime = prefs[showElapsedWorkTimeKey] ?: true,
+            showHistoryCycleSummary = prefs[showHistoryCycleSummaryKey] ?: true,
         )
     }
 
@@ -54,6 +58,8 @@ class SettingsRepository(private val context: Context) {
             prefs[targetHoursKey] = settings.targetHours.coerceAtLeast(0f)
             prefs[calendarHoursDecimalPlacesKey] = settings.calendarHoursDecimalPlaces.coerceIn(1, 2)
             prefs[showExpectedClockOutKey] = settings.showExpectedClockOut
+            prefs[showElapsedWorkTimeKey] = settings.showElapsedWorkTime
+            prefs[showHistoryCycleSummaryKey] = settings.showHistoryCycleSummary
         }
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.clockin.app.domain.StatsCalculator
+import com.clockin.app.domain.CycleStats
 import com.clockin.app.domain.TargetProgress
 import com.clockin.app.ui.theme.TextSecondary
 
@@ -110,6 +111,57 @@ fun TargetProgressCard(progress: TargetProgress, modifier: Modifier = Modifier) 
                 )
             }
         }
+    }
+}
+
+@Composable
+fun CycleSummaryCard(stats: CycleStats, modifier: Modifier = Modifier) {
+    AppCard(modifier = modifier) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    AppIcons.Calendar,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text("周期汇总", style = MaterialTheme.typography.titleLarge)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                SummaryMetric(
+                    label = "打卡天数",
+                    value = "${stats.clockedDays} 天",
+                    modifier = Modifier.weight(1f),
+                )
+                SummaryMetric(
+                    label = "累计工时",
+                    value = "${"%.1f".format(stats.totalHours)} h",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = FontFamily.Monospace,
+            ),
+        )
     }
 }
 

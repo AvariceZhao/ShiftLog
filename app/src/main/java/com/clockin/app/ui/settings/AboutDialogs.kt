@@ -31,6 +31,7 @@ import com.clockin.app.update.UpdateCheckResult
 import kotlinx.coroutines.launch
 
 private const val GITHUB_URL = "https://github.com/AvariceZhao/ShiftLog"
+private const val GITHUB_ISSUES_URL = "$GITHUB_URL/issues/new/choose"
 
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
@@ -122,6 +123,14 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     "GitHub 开源项目",
                     modifier = Modifier.clickable {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)))
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    "问题反馈",
+                    modifier = Modifier.clickable {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_ISSUES_URL)))
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary,

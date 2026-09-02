@@ -138,6 +138,11 @@ object ShiftCalculator {
         return "${"%.${places}f".format(hours)}h"
     }
 
+    fun formatElapsedWorkTime(elapsedMillis: Long): String {
+        val hours = elapsedMillis.coerceAtLeast(0).toDouble() / 3_600_000
+        return "${"%.1f".format(hours)} h"
+    }
+
     fun statusLabel(status: PunchStatus): String = when (status) {
         PunchStatus.NORMAL -> "正常"
         PunchStatus.LATE -> "迟到"

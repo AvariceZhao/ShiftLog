@@ -17,7 +17,6 @@ import com.clockin.app.domain.PayCycle
 import com.clockin.app.domain.RecordDetail
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.StatsCalculator
-import com.clockin.app.domain.TargetProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +31,6 @@ data class HistoryUiState(
     val cycle: PayCycle? = null,
     val records: List<RecordDetail> = emptyList(),
     val stats: CycleStats? = null,
-    val progress: TargetProgress? = null,
 )
 
 class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
@@ -51,7 +49,6 @@ class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
                     cycle = cycle,
                     records = records.map { ShiftCalculator.buildRecordDetail(it, settings) },
                     stats = StatsCalculator.cycleStats(records, settings, cycle),
-                    progress = StatsCalculator.targetProgress(records, settings, cycle),
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HistoryUiState())

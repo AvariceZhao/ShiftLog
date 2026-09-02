@@ -48,6 +48,7 @@ import com.clockin.app.ui.theme.ButtonShape
 import com.clockin.app.ui.theme.CyanSecondary
 import com.clockin.app.ui.theme.NightBorder
 import com.clockin.app.ui.theme.NightSurfaceHigh
+import com.clockin.app.ui.theme.TextMuted
 import com.clockin.app.ui.theme.TextSecondary
 
 @Composable
@@ -127,22 +128,54 @@ fun HomeScreen(
                             expectedClockOut?.byTargetDays?.let { add(it.label to it.timeText) }
                             expectedClockOut?.byCycleDays?.let { add(it.label to it.timeText) }
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                        ) {
-                            TimeDisplay(
-                                time = ShiftCalculator.formatTime(detail.record.clockInTime).take(5),
-                                label = "上班",
-                                onClick = detail.record.clockInTime?.let { { editing = detail.record } },
-                            )
-                            Text("→", style = MaterialTheme.typography.headlineMedium, color = TextSecondary)
-                            TimeDisplay(
-                                time = ShiftCalculator.formatTime(detail.record.clockOutTime).take(5),
-                                label = "下班",
-                                hints = clockOutHints,
-                                onClick = detail.record.clockOutTime?.let { { editing = detail.record } },
-                            )
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.TopCenter,
+                                ) {
+                                    TimeDisplay(
+                                        time = ShiftCalculator.formatTime(detail.record.clockInTime).take(5),
+                                        label = "上班",
+                                        onClick = detail.record.clockInTime?.let { { editing = detail.record } },
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.TopCenter,
+                                ) {
+                                    TimeDisplay(
+                                        time = ShiftCalculator.formatTime(detail.record.clockOutTime).take(5),
+                                        label = "下班",
+                                        hints = clockOutHints,
+                                        onClick = detail.record.clockOutTime?.let { { editing = detail.record } },
+                                    )
+                                }
+                            }
+                            Column(
+                                modifier = Modifier.align(Alignment.TopCenter),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    "→",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = TextSecondary,
+                                )
+                                if (settings.showElapsedWorkTime) {
+                                    state.elapsedWorkMillis?.let { elapsed ->
+                                        Text(
+                                            "已上班",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextMuted,
+                                        )
+                                        Text(
+                                            ShiftCalculator.formatElapsedWorkTime(elapsed),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextMuted,
+                                        )
+                                    }
+                                }
+                            }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (detail.record.clockInTime != null) {

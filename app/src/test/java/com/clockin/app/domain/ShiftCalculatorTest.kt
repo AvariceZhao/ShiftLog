@@ -93,4 +93,12 @@ class ShiftCalculatorTest {
         val hours = ShiftCalculator.hoursWorked(inMs, outMs)
         assertEquals(21.97, hours, 0.01)
     }
+
+    @Test
+    fun formatElapsedWorkTime_showsOneDecimalHour() {
+        assertEquals("0.0 h", ShiftCalculator.formatElapsedWorkTime(0))
+        assertEquals("1.0 h", ShiftCalculator.formatElapsedWorkTime(59 * 60_000L))
+        assertEquals("4.5 h", ShiftCalculator.formatElapsedWorkTime(267 * 60_000L))
+        assertEquals("5.0 h", ShiftCalculator.formatElapsedWorkTime(300 * 60_000L))
+    }
 }

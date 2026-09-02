@@ -32,7 +32,7 @@ import com.clockin.app.ui.components.AppCard
 import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.components.ScreenBackground
 import com.clockin.app.ui.components.SectionHeader
-import com.clockin.app.ui.components.TargetProgressCard
+import com.clockin.app.ui.components.CycleSummaryCard
 import com.clockin.app.ui.theme.AmberPrimary
 import com.clockin.app.ui.theme.ButtonShape
 import com.clockin.app.ui.theme.TextSecondary
@@ -121,20 +121,13 @@ fun HistoryScreen(
                 }
             }
 
-            OutlinedButton(
-                onClick = viewModel::goToCurrentCycle,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-            ) {
-                Text("回到当前周期")
-            }
-
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                state.progress?.let { progress ->
-                    item { TargetProgressCard(progress) }
+                if (settings.showHistoryCycleSummary) {
+                    state.stats?.let { stats ->
+                        item { CycleSummaryCard(stats) }
+                    }
                 }
 
                 state.cycle?.let { cycle ->
@@ -150,6 +143,15 @@ fun HistoryScreen(
                                 )
                             },
                         )
+                    }
+                }
+
+                item {
+                    OutlinedButton(
+                        onClick = viewModel::goToCurrentCycle,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("回到当前周期")
                     }
                 }
 

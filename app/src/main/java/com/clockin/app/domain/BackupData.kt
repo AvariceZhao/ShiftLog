@@ -42,6 +42,8 @@ object BackupExporter {
         put("targetHours", settings.targetHours.toDouble())
         put("calendarHoursDecimalPlaces", settings.calendarHoursDecimalPlaces)
         put("showExpectedClockOut", settings.showExpectedClockOut)
+        put("showElapsedWorkTime", settings.showElapsedWorkTime)
+        put("showHistoryCycleSummary", settings.showHistoryCycleSummary)
     }
 
     private fun recordsToJson(records: List<ClockRecord>): JSONArray {
@@ -103,6 +105,8 @@ object BackupImporter {
         targetHours = json.getDouble("targetHours").toFloat().coerceAtLeast(0f),
         calendarHoursDecimalPlaces = json.optInt("calendarHoursDecimalPlaces", 1).coerceIn(1, 2),
         showExpectedClockOut = json.optBoolean("showExpectedClockOut", true),
+        showElapsedWorkTime = json.optBoolean("showElapsedWorkTime", true),
+        showHistoryCycleSummary = json.optBoolean("showHistoryCycleSummary", true),
     )
 
     private fun parseRecords(array: JSONArray): List<ClockRecord> {

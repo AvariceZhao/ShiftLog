@@ -43,9 +43,6 @@ class UpdateCoordinator(context: Context) {
     val promptRelease: StateFlow<ReleaseInfo?> = _promptRelease.asStateFlow()
 
     suspend fun checkForUpdate(manual: Boolean): UpdateCheckResult {
-        if (!manual && !dismissStore.shouldRunAutoCheck()) {
-            return UpdateCheckResult.UpToDate
-        }
         val current = AppVersion.current(appContext)
         val release = GitHubUpdateChecker.fetchLatestRelease().getOrElse { error ->
             return UpdateCheckResult.Failed(
@@ -53,11 +50,9 @@ class UpdateCoordinator(context: Context) {
             )
         }
         if (!VersionComparator.isNewer(release.versionName, current.versionName)) {
-            if (!manual) dismissStore.markAutoCheckRan()
             return UpdateCheckResult.UpToDate
         }
         if (!manual) {
-            dismissStore.markAutoCheckRan()
             if (dismissStore.getDismissedTag() == release.tagName) {
                 return UpdateCheckResult.UpToDate
             }

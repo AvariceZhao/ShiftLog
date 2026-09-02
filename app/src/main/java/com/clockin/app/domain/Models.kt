@@ -17,6 +17,10 @@ data class AppSettings(
     val calendarHoursDecimalPlaces: Int = 1,
     /** 打卡页是否显示推荐下班时间 */
     val showExpectedClockOut: Boolean = true,
+    /** 打卡页是否显示当前班次已上班时长 */
+    val showElapsedWorkTime: Boolean = true,
+    /** 历史页是否显示当前周期的汇总卡片 */
+    val showHistoryCycleSummary: Boolean = true,
 )
 
 data class ClockRecord(

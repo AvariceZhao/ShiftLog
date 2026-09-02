@@ -171,7 +171,7 @@ fun UpdateAvailableDialog(
                 }
                 if (!isDownloading) {
                     Text(
-                        "此版本不再提醒",
+                        "当前版本不再提醒",
                         modifier = Modifier.clickable(onClick = onDismissVersion),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,

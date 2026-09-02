@@ -32,6 +32,7 @@ data class HomeUiState(
     val canClockOut: Boolean = false,
     val cycleLabel: String = "",
     val progress: TargetProgress? = null,
+    val elapsedWorkMillis: Long? = null,
 )
 
 class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
@@ -52,9 +53,13 @@ class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
             combine(
                 repository.observeActiveShift(),
                 repository.observeCycleRecords(cycle),
-            ) { active, cycleRecords ->
+                AppTimeTicker.minuteTickFlow(),
+            ) { active, cycleRecords, _ ->
                 val (shiftDate, record) = active
                 val detail = record?.let { ShiftCalculator.buildRecordDetail(it, settings) }
+                val elapsedWorkMillis = record?.clockInTime
+                    ?.takeIf { record.clockOutTime == null }
+                    ?.let { clockIn -> (System.currentTimeMillis() - clockIn).coerceAtLeast(0L) }
                 HomeUiState(
                     isReady = true,
                     shiftDate = shiftDate,
@@ -63,6 +68,7 @@ class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
                     canClockOut = record?.clockInTime != null,
                     cycleLabel = cycle.label(),
                     progress = StatsCalculator.targetProgress(cycleRecords, settings, cycle),
+                    elapsedWorkMillis = elapsedWorkMillis,
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
