@@ -35,10 +35,11 @@ fun SimpleMarkdownText(
     )
 }
 
-private fun parseSimpleMarkdown(source: String): AnnotatedString = buildAnnotatedString {
+internal fun parseSimpleMarkdown(source: String): AnnotatedString = buildAnnotatedString {
     source.lines().forEachIndexed { index, rawLine ->
         if (index > 0) append('\n')
-        val line = rawLine.trimEnd()
+        // GitHub Release 正文可能统一缩进，渲染时不应把缩进当作 Markdown 内容。
+        val line = rawLine.trimStart()
         when {
             line.startsWith("### ") -> {
                 withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
@@ -58,6 +59,11 @@ private fun parseSimpleMarkdown(source: String): AnnotatedString = buildAnnotate
             line.matches(Regex("^[-*+]\\s+.*")) -> {
                 append("• ")
                 appendInline(line.replaceFirst(Regex("^[-*+]\\s+"), ""))
+            }
+            line.matches(Regex("^\\d+[.)]\\s+.*")) -> {
+                val marker = line.substring(0, line.indexOfFirst(Char::isWhitespace))
+                append("$marker ")
+                appendInline(line.removePrefix(marker).trimStart())
             }
             else -> appendInline(line)
         }

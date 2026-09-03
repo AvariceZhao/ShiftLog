@@ -177,18 +177,24 @@ fun HomeScreen(
                                 }
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (detail.record.clockInTime != null) {
-                                StatusChip(
-                                    ShiftCalculator.statusLabel(detail.clockInStatus),
-                                    detail.clockInStatus,
-                                )
-                            }
-                            if (detail.record.clockOutTime != null) {
-                                StatusChip(
-                                    ShiftCalculator.statusLabel(detail.clockOutStatus),
-                                    detail.clockOutStatus,
-                                )
+                        Row(
+                            modifier = Modifier.height(24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (settings.showPunchStatus) {
+                                if (detail.record.clockInTime != null) {
+                                    StatusChip(
+                                        ShiftCalculator.statusLabel(detail.clockInStatus),
+                                        detail.clockInStatus,
+                                    )
+                                }
+                                if (detail.record.clockOutTime != null) {
+                                    StatusChip(
+                                        ShiftCalculator.statusLabel(detail.clockOutStatus),
+                                        detail.clockOutStatus,
+                                    )
+                                }
                             }
                         }
                         detail.hoursWorked?.let {
@@ -243,7 +249,9 @@ fun HomeScreen(
                 }
             }
 
-            state.progress?.let { TargetProgressCard(it) }
+            if (settings.showHomeTargetProgress) {
+                state.progress?.let { TargetProgressCard(it) }
+            }
             }
 
             if (showFireworks) {

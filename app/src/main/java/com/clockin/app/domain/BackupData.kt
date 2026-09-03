@@ -43,6 +43,8 @@ object BackupExporter {
         put("calendarHoursDecimalPlaces", settings.calendarHoursDecimalPlaces)
         put("showExpectedClockOut", settings.showExpectedClockOut)
         put("showElapsedWorkTime", settings.showElapsedWorkTime)
+        put("showPunchStatus", settings.showPunchStatus)
+        put("showHomeTargetProgress", settings.showHomeTargetProgress)
         put("showHistoryCycleSummary", settings.showHistoryCycleSummary)
     }
 
@@ -106,6 +108,8 @@ object BackupImporter {
         calendarHoursDecimalPlaces = json.optInt("calendarHoursDecimalPlaces", 1).coerceIn(1, 2),
         showExpectedClockOut = json.optBoolean("showExpectedClockOut", true),
         showElapsedWorkTime = json.optBoolean("showElapsedWorkTime", true),
+        showPunchStatus = json.optBoolean("showPunchStatus", true),
+        showHomeTargetProgress = json.optBoolean("showHomeTargetProgress", true),
         showHistoryCycleSummary = json.optBoolean("showHistoryCycleSummary", true),
     )
 

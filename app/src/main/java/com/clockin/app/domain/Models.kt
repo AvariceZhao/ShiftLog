@@ -19,6 +19,10 @@ data class AppSettings(
     val showExpectedClockOut: Boolean = true,
     /** 打卡页是否显示当前班次已上班时长 */
     val showElapsedWorkTime: Boolean = true,
+    /** 打卡页是否显示迟到、早退等状态标签 */
+    val showPunchStatus: Boolean = true,
+    /** 打卡页是否显示当前周期的目标进度卡片 */
+    val showHomeTargetProgress: Boolean = true,
     /** 历史页是否显示当前周期的汇总卡片 */
     val showHistoryCycleSummary: Boolean = true,
 )

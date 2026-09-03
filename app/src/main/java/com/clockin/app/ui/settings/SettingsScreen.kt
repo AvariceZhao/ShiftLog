@@ -69,6 +69,8 @@ private data class SettingsForm(
     val calendarHoursDecimalPlaces: Int,
     val showExpectedClockOut: Boolean,
     val showElapsedWorkTime: Boolean,
+    val showPunchStatus: Boolean,
+    val showHomeTargetProgress: Boolean,
     val showHistoryCycleSummary: Boolean,
 ) {
     companion object {
@@ -82,6 +84,8 @@ private data class SettingsForm(
             calendarHoursDecimalPlaces = settings.calendarHoursDecimalPlaces,
             showExpectedClockOut = settings.showExpectedClockOut,
             showElapsedWorkTime = settings.showElapsedWorkTime,
+            showPunchStatus = settings.showPunchStatus,
+            showHomeTargetProgress = settings.showHomeTargetProgress,
             showHistoryCycleSummary = settings.showHistoryCycleSummary,
         )
     }
@@ -310,6 +314,58 @@ fun SettingsScreen(
                             onCheckedChange = { checked ->
                                 form = form.copy(showExpectedClockOut = checked)
                                 viewModel.update { it.copy(showExpectedClockOut = checked) }
+                                markSaved()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = AmberPrimary,
+                                checkedTrackColor = AmberPrimary.copy(alpha = 0.4f),
+                            ),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("打卡状态标签", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "在打卡页显示迟到、早退和缺卡等状态",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                        Switch(
+                            checked = form.showPunchStatus,
+                            onCheckedChange = { checked ->
+                                form = form.copy(showPunchStatus = checked)
+                                viewModel.update { it.copy(showPunchStatus = checked) }
+                                markSaved()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = AmberPrimary,
+                                checkedTrackColor = AmberPrimary.copy(alpha = 0.4f),
+                            ),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("目标进度", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "在打卡页显示当前周期的目标进度",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                        Switch(
+                            checked = form.showHomeTargetProgress,
+                            onCheckedChange = { checked ->
+                                form = form.copy(showHomeTargetProgress = checked)
+                                viewModel.update { it.copy(showHomeTargetProgress = checked) }
                                 markSaved()
                             },
                             colors = SwitchDefaults.colors(

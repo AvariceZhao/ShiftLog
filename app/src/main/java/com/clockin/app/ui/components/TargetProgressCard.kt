@@ -1,5 +1,6 @@
 package com.clockin.app.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -39,15 +41,32 @@ fun TargetProgressCard(progress: TargetProgress, modifier: Modifier = Modifier) 
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Icon(
-                    AppIcons.Star,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text("目标进度", style = MaterialTheme.typography.titleLarge)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        AppIcons.Star,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text("目标进度", style = MaterialTheme.typography.titleLarge)
+                }
+                if (progress.isTargetMet) {
+                    Text(
+                        "✓ 已达成",
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
 
             ProgressBar(
@@ -69,12 +88,6 @@ fun TargetProgressCard(progress: TargetProgress, modifier: Modifier = Modifier) 
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatRow(
-                    label = "剩余",
-                    value = "${StatsCalculator.formatRemainingDays(progress.remainingDays)} · " +
-                        StatsCalculator.formatRemainingHours(progress.remainingHours),
-                )
-
                 MetricWithFormula(
                     label = "当前日均",
                     formula = "已累计工时 ÷ 已打卡天数",
@@ -82,36 +95,65 @@ fun TargetProgressCard(progress: TargetProgress, modifier: Modifier = Modifier) 
                     highlight = progress.currentDailyAvg != null,
                 )
 
-                MetricWithFormula(
-                    label = "所需日均（按目标出勤）",
-                    formula = if (progress.daysTargetMetHoursNotMet) {
-                        "出勤天数已满，不计算日均"
-                    } else {
-                        "剩余工时 ÷ 目标剩余出勤天数（${progress.remainingDays.coerceAtLeast(0)} 天）"
-                    },
-                    value = if (progress.daysTargetMetHoursNotMet) {
-                        "还需 ${StatsCalculator.formatRemainingHours(progress.remainingHours)}"
-                    } else {
-                        StatsCalculator.formatDailyAvg(
-                            progress.requiredDailyByTargetDays,
-                            progress.requiredDailyByTargetDaysUnreachable,
-                        )
-                    },
-                    highlight = progress.requiredDailyByTargetDays != null,
-                )
+                if (progress.isTargetMet) {
+                    StatRow(
+                        label = "超额出勤",
+                        value = StatsCalculator.formatRemainingDays(progress.remainingDays),
+                        highlight = progress.remainingDays < 0,
+                    )
+                    StatRow(
+                        label = "超额工时",
+                        value = formatCompletedHours(progress.remainingHours),
+                        highlight = progress.remainingHours < 0,
+                    )
+                    StatRow(
+                        label = "本周期剩余",
+                        value = "${progress.cycleDaysRemaining} 天",
+                    )
+                } else {
+                    StatRow(
+                        label = "剩余",
+                        value = "${StatsCalculator.formatRemainingDays(progress.remainingDays)} · " +
+                            StatsCalculator.formatRemainingHours(progress.remainingHours),
+                    )
+                    MetricWithFormula(
+                        label = "所需日均（按目标出勤）",
+                        formula = if (progress.daysTargetMetHoursNotMet) {
+                            "出勤天数已满，不计算日均"
+                        } else {
+                            "剩余工时 ÷ 目标剩余出勤天数（${progress.remainingDays.coerceAtLeast(0)} 天）"
+                        },
+                        value = if (progress.daysTargetMetHoursNotMet) {
+                            "还需 ${StatsCalculator.formatRemainingHours(progress.remainingHours)}"
+                        } else {
+                            StatsCalculator.formatDailyAvg(
+                                progress.requiredDailyByTargetDays,
+                                progress.requiredDailyByTargetDaysUnreachable,
+                            )
+                        },
+                        highlight = progress.requiredDailyByTargetDays != null,
+                    )
 
-                MetricWithFormula(
-                    label = "所需日均（按周期日历）",
-                    formula = "剩余工时 ÷ 周期剩余日历天数（${progress.cycleDaysRemaining} 天）",
-                    value = StatsCalculator.formatDailyAvg(
-                        progress.requiredDailyByCycleDays,
-                        progress.requiredDailyByCycleDaysUnreachable,
-                    ),
-                    highlight = progress.requiredDailyByCycleDays != null,
-                )
+                    MetricWithFormula(
+                        label = "所需日均（按周期日历）",
+                        formula = "剩余工时 ÷ 周期剩余日历天数（${progress.cycleDaysRemaining} 天）",
+                        value = StatsCalculator.formatDailyAvg(
+                            progress.requiredDailyByCycleDays,
+                            progress.requiredDailyByCycleDaysUnreachable,
+                        ),
+                        highlight = progress.requiredDailyByCycleDays != null,
+                    )
+                }
             }
         }
     }
+}
+
+private fun formatCompletedHours(remainingHours: Double): String = when {
+    remainingHours == 0.0 -> "0.0h"
+    remainingHours < 0 && -remainingHours < 0.05 -> "+<0.1h"
+    remainingHours < 0 -> "+${"%.1f".format(-remainingHours)}h"
+    else -> "${"%.1f".format(remainingHours)}h"
 }
 
 @Composable
