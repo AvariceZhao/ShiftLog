@@ -12,6 +12,9 @@ enum class CycleDayStatus {
     ISSUE,
     /** 旷工（应出勤但未打卡） */
     ABSENT,
+    /** 已报备请假，不计出勤或缺勤 */
+    LEAVE,
+    REST,
     /** 周期外占位 */
     OUT_OF_CYCLE,
 }
@@ -26,14 +29,16 @@ object CycleDayStatusCalculator {
         now: LocalDateTime = LocalDateTime.now(),
     ): CycleDayStatus {
         if (!cycle.contains(date)) return CycleDayStatus.OUT_OF_CYCLE
+        val existing = record?.takeIf { it.shiftDate == date.toShiftDateString() }
+        if (!WorkdayCalendar.isWorkday(date, settings, existing)) return CycleDayStatus.REST
         if (date.isAfter(today)) return CycleDayStatus.PENDING
         if (date == today && now.isBefore(LocalDateTime.of(date, settings.standardClockIn))) {
             return CycleDayStatus.PENDING
         }
 
-        val shiftDate = date.toShiftDateString()
-        val existing = record?.takeIf { it.shiftDate == shiftDate }
+        if (existing?.isLeave == true) return CycleDayStatus.LEAVE
         if (existing == null || (existing.clockInTime == null && existing.clockOutTime == null)) {
+            if (!isShiftEnded(date, now, settings)) return CycleDayStatus.PENDING
             return CycleDayStatus.ABSENT
         }
         if (existing.clockInTime == null || existing.clockOutTime == null) {

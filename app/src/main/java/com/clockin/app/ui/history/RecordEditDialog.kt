@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
@@ -37,7 +39,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.ClockRecord
+import com.clockin.app.domain.DaySchedule
 import com.clockin.app.domain.ShiftCalculator
+import com.clockin.app.domain.WorkdayCalendar
 import com.clockin.app.domain.toShiftDateString
 import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.theme.AmberPrimary
@@ -54,7 +58,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
 
-private enum class EditMode { Duration, ExactTime }
+private enum class EditMode { Duration, ExactTime, Schedule }
 
 private enum class TimeFieldTarget {
     DurationIn,
@@ -107,6 +111,8 @@ fun RecordEditDialog(
     var error by remember { mutableStateOf<String?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     var activeTimeField by remember { mutableStateOf<TimeFieldTarget?>(null) }
+    var isLeave by remember(record) { mutableStateOf(record.isLeave) }
+    var daySchedule by remember(record) { mutableStateOf(record.daySchedule) }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = AmberPrimary,
@@ -120,9 +126,12 @@ fun RecordEditDialog(
         containerColor = NightSurface,
         titleContentColor = MaterialTheme.colorScheme.onSurface,
         textContentColor = MaterialTheme.colorScheme.onSurface,
-        title = { Text("编辑打卡") },
+        title = { Text("编辑记录") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = mode == EditMode.Duration,
@@ -142,6 +151,15 @@ fun RecordEditDialog(
                             selectedLabelColor = AmberPrimary,
                         ),
                     )
+                    FilterChip(
+                        selected = mode == EditMode.Schedule,
+                        onClick = { mode = EditMode.Schedule; error = null },
+                        label = { Text("排班") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AmberPrimary.copy(alpha = 0.2f),
+                            selectedLabelColor = AmberPrimary,
+                        ),
+                    )
                 }
 
                 ShiftDateField(
@@ -150,7 +168,55 @@ fun RecordEditDialog(
                     onClick = { showDatePicker = true },
                 )
 
-                when (mode) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("请假报备", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "请假日不计有效出勤，也不计缺勤",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = isLeave,
+                        onCheckedChange = { isLeave = it; error = null },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = AmberPrimary,
+                            checkedTrackColor = AmberPrimary.copy(alpha = 0.4f),
+                        ),
+                    )
+                }
+
+                if (mode == EditMode.Schedule) {
+                    Text("当天安排", style = MaterialTheme.typography.bodyLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(
+                            DaySchedule.AUTO to "跟随日历",
+                            DaySchedule.WORKDAY to "工作日",
+                            DaySchedule.REST_DAY to "休息日",
+                        ).forEach { (value, label) ->
+                            FilterChip(
+                                selected = daySchedule == value,
+                                onClick = { daySchedule = value },
+                                label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AmberPrimary.copy(alpha = 0.2f),
+                                    selectedLabelColor = AmberPrimary,
+                                ),
+                            )
+                        }
+                    }
+                    val calendarWorkday = WorkdayCalendar.isWorkday(parseShiftDate(shiftDate), settings)
+                    Text(
+                        "日历安排：${if (calendarWorkday) "工作日" else "休息日"}。公司安排不同时可手动修改；休息日不计工时、出勤和缺勤，原始打卡时间保留。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else if (!isLeave) when (mode) {
                     EditMode.Duration -> {
                         OutlinedTextField(
                             value = durationText,
@@ -205,6 +271,7 @@ fun RecordEditDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    EditMode.Schedule -> Unit
                 }
 
                 error?.let {
@@ -217,7 +284,19 @@ fun RecordEditDialog(
                 onClick = {
                     error = null
                     runCatching {
-                        val saved = when (mode) {
+                        val saved = if (mode == EditMode.Schedule) {
+                            record.copy(
+                                shiftDate = parseShiftDate(shiftDate).toShiftDateString(),
+                                isLeave = isLeave,
+                            )
+                        } else if (isLeave) {
+                            ClockRecord(
+                                shiftDate = parseShiftDate(shiftDate).toShiftDateString(),
+                                clockInTime = null,
+                                clockOutTime = null,
+                                isLeave = true,
+                            )
+                        } else when (mode) {
                             EditMode.Duration -> buildFromDuration(
                                 shiftDate = shiftDate,
                                 durationText = durationText,
@@ -232,8 +311,9 @@ fun RecordEditDialog(
                                 clockOutText = exactClockOutText,
                                 clockOutNextDay = exactOutNextDay,
                             )
+                            EditMode.Schedule -> throw IllegalStateException("无效的编辑模式")
                         }
-                        onSave(saved)
+                        onSave(saved.copy(daySchedule = daySchedule))
                     }.onFailure { e ->
                         error = e.message ?: "保存失败，请检查输入"
                     }
@@ -244,7 +324,9 @@ fun RecordEditDialog(
         },
         dismissButton = {
             Row {
-                if (record.clockInTime != null || record.clockOutTime != null) {
+                if (record.clockInTime != null || record.clockOutTime != null || record.isLeave ||
+                    record.daySchedule != DaySchedule.AUTO
+                ) {
                     TextButton(onClick = onDelete) {
                         Text("删除", color = StatusMissed)
                     }

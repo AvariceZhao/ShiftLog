@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -44,7 +43,11 @@ class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
         ) { settings, override, today ->
             settings to (override ?: CycleCalculator.currentCycle(settings.cycleStartDay, today))
         }.flatMapLatest { (settings, cycle) ->
-            repository.observeCycleRecords(cycle).map { records ->
+            viewModelScope.launch { repository.refreshHolidayCalendar(cycle) }
+            combine(
+                repository.observeCycleRecords(cycle),
+                AppTimeTicker.minuteTickFlow(),
+            ) { records, _ ->
                 HistoryUiState(
                     cycle = cycle,
                     records = records.map { ShiftCalculator.buildRecordDetail(it, settings) },

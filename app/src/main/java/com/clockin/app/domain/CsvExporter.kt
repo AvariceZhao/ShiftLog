@@ -14,9 +14,12 @@ object CsvExporter {
         settings: AppSettings,
     ): String {
         val sb = StringBuilder()
-        val clockedDays = records.count { it.clockInTime != null }
+        val workingRecords = records.filter {
+            !it.isLeave && WorkdayCalendar.isWorkday(it.shiftDate.toLocalDate(), settings, it)
+        }
+        val clockedDays = workingRecords.count { it.clockInTime != null }
         var totalHours = 0.0
-        records.forEach { record ->
+        workingRecords.forEach { record ->
             ShiftCalculator.buildRecordDetail(record, settings).hoursWorked?.let {
                 totalHours += it
             }
@@ -25,19 +28,30 @@ object CsvExporter {
         sb.appendLine("# 记录数,${records.size}")
         sb.appendLine("# 目标,${settings.targetDays}天,${settings.targetHours}h")
         sb.appendLine("# 合计,${clockedDays}天,${"%.1f".format(totalHours)}h")
-        sb.appendLine("日期,上班时间,下班时间,工时(小时),备注")
+        sb.appendLine("日期,上班时间,下班时间,工时(小时),备注,排班")
         records.sortedByDescending { it.shiftDate }.forEach { record ->
             val detail = ShiftCalculator.buildRecordDetail(record, settings)
+            val isWorkday = WorkdayCalendar.isWorkday(record.shiftDate.toLocalDate(), settings, record)
             val clockIn = record.clockInTime?.let { formatTime(it) } ?: ""
             val clockOut = record.clockOutTime?.let { formatTime(it) } ?: ""
-            val hours = detail.hoursWorked?.let { "%.2f".format(it) } ?: ""
+            val hours = detail.hoursWorked?.takeIf { isWorkday && !record.isLeave }
+                ?.let { "%.2f".format(it) } ?: ""
             sb.appendLine(
                 listOf(
                     formatDate(record.shiftDate),
                     clockIn,
                     clockOut,
                     hours,
-                    detail.note,
+                    when {
+                        record.isLeave -> "请假"
+                        !isWorkday -> "休息"
+                        else -> detail.note
+                    },
+                    when (record.daySchedule) {
+                        DaySchedule.AUTO -> "跟随日历"
+                        DaySchedule.WORKDAY -> "工作日"
+                        DaySchedule.REST_DAY -> "休息日"
+                    },
                 ).joinCsvRow(),
             )
         }

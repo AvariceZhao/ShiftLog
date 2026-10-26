@@ -34,6 +34,7 @@ import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.ExpectedClockOutCalculator
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.ClockRecord
+import com.clockin.app.domain.TargetProgressMode
 import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.components.AppCard
 import com.clockin.app.ui.components.FireworksOverlay
@@ -41,6 +42,7 @@ import com.clockin.app.ui.components.ScreenBackground
 import com.clockin.app.ui.components.SectionHeader
 import com.clockin.app.ui.components.StatusChip
 import com.clockin.app.ui.components.TargetProgressCard
+import com.clockin.app.ui.components.EffectiveAttendanceProgressCard
 import com.clockin.app.ui.components.TimeDisplay
 import com.clockin.app.ui.history.RecordEditDialog
 import com.clockin.app.ui.theme.AmberPrimary
@@ -92,6 +94,13 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text("今日打卡", style = MaterialTheme.typography.titleLarge)
+                    if (state.isReady && state.isRestDay) {
+                        Text(
+                            "本班次为休息日，不计工时、出勤和缺勤",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                    }
                     val detail = state.detail
                     if (!state.isReady) {
                         Box(
@@ -101,7 +110,7 @@ fun HomeScreen(
                                 .clip(MaterialTheme.shapes.medium)
                                 .background(NightSurfaceHigh),
                         )
-                    } else if (detail == null) {
+                    } else if (state.isLeave) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -110,15 +119,35 @@ fun HomeScreen(
                                 .background(NightSurfaceHigh),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("尚未打卡", color = TextSecondary)
+                            Text("今日已报备请假", color = TextSecondary)
+                        }
+                    } else if (detail == null ||
+                        (detail.record.clockInTime == null && detail.record.clockOutTime == null)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
+                                .clip(MaterialTheme.shapes.medium)
+                                .background(NightSurfaceHigh),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(if (state.isRestDay) "今日休息" else "尚未打卡", color = TextSecondary)
                         }
                     } else {
-                        val expectedClockOut = if (settings.showExpectedClockOut) {
-                            state.progress?.let { progress ->
-                                ExpectedClockOutCalculator.calculate(
+                        val expectedClockOut = if (settings.showExpectedClockOut && !state.isRestDay) {
+                            when (settings.targetProgressMode) {
+                                TargetProgressMode.DAYS_AND_HOURS -> state.progress?.let { progress ->
+                                    ExpectedClockOutCalculator.calculate(
+                                        clockInMs = detail.record.clockInTime,
+                                        clockOutMs = detail.record.clockOutTime,
+                                        progress = progress,
+                                    )
+                                }
+                                TargetProgressMode.EFFECTIVE_ATTENDANCE ->
+                                    ExpectedClockOutCalculator.calculateForEffectiveAttendance(
                                     clockInMs = detail.record.clockInTime,
                                     clockOutMs = detail.record.clockOutTime,
-                                    progress = progress,
                                 )
                             }
                         } else {
@@ -182,7 +211,7 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            if (settings.showPunchStatus) {
+                            if (settings.showPunchStatus && !state.isRestDay) {
                                 if (detail.record.clockInTime != null) {
                                     StatusChip(
                                         ShiftCalculator.statusLabel(detail.clockInStatus),
@@ -197,7 +226,7 @@ fun HomeScreen(
                                 }
                             }
                         }
-                        detail.hoursWorked?.let {
+                        detail.hoursWorked?.takeIf { !state.isRestDay }?.let {
                             Text(
                                 "工时 ${"%.2f".format(it)} 小时",
                                 style = MaterialTheme.typography.titleMedium,
@@ -250,7 +279,15 @@ fun HomeScreen(
             }
 
             if (settings.showHomeTargetProgress) {
-                state.progress?.let { TargetProgressCard(it) }
+                when (settings.targetProgressMode) {
+                    TargetProgressMode.DAYS_AND_HOURS ->
+                        state.progress?.let { TargetProgressCard(it) }
+                    TargetProgressMode.EFFECTIVE_ATTENDANCE ->
+                        state.effectiveProgress?.let { EffectiveAttendanceProgressCard(it) }
+                }
+            }
+            state.calendarNotice?.let { notice ->
+                Text(notice, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
             }
 

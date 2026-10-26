@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 
 class StatsCalculatorTest {
-    private val settings = defaultSettings()
+    private val settings = defaultSettings().copy(useWorkdayCalendar = false)
     private val cycle = PayCycle(date(2026, 6, 9), date(2026, 7, 8))
 
     @Test
@@ -56,7 +56,7 @@ class StatsCalculatorTest {
             today = date(2026, 6, 17),
             now = LocalDateTime.of(2026, 6, 17, 10, 0),
         )
-        assertEquals(9, stats.absentCount)
+        assertEquals(8, stats.absentCount)
         assertEquals(0, stats.incompletePunchCount)
         assertEquals(0, stats.clockedDays)
     }
@@ -138,7 +138,7 @@ class StatsCalculatorTest {
 
     @Test
     fun targetProgress_whenDaysMetButHoursNotMet_targetDailyIsHidden() {
-        val records = (1..21).map { day ->
+        val records = (9..29).map { day ->
             ClockRecord(
                 shiftDate = "2026-06-${"%02d".format(day)}",
                 clockInTime = millisAt(date(2026, 6, day), LocalTime.of(7, 0)),
@@ -159,7 +159,7 @@ class StatsCalculatorTest {
 
     @Test
     fun targetProgress_whenGoalReached_bothDailyEstimatesAreNull() {
-        val records = (1..21).map { day ->
+        val records = (9..29).map { day ->
             ClockRecord(
                 shiftDate = "2026-06-${"%02d".format(day)}",
                 clockInTime = millisAt(date(2026, 6, day), LocalTime.of(7, 0)),
@@ -176,7 +176,7 @@ class StatsCalculatorTest {
 
     @Test
     fun targetProgress_isTargetMet_falseWhenOnlyDaysMet() {
-        val records = (1..21).map { day ->
+        val records = (9..29).map { day ->
             ClockRecord(
                 shiftDate = "2026-06-${"%02d".format(day)}",
                 clockInTime = millisAt(date(2026, 6, day), LocalTime.of(7, 0)),
@@ -229,5 +229,38 @@ class StatsCalculatorTest {
     fun formatRemaining_showsPlusWhenExceeded() {
         assertEquals("+2 天", StatsCalculator.formatRemainingDays(-2))
         assertEquals("+3.5h", StatsCalculator.formatRemainingHours(-3.5))
+    }
+
+    @Test
+    fun effectiveAttendance_usesHighestMatchingTierAndExcludesLeave() {
+        val shortCycle = PayCycle(date(2026, 6, 9), date(2026, 6, 14))
+        fun completedRecord(day: Int, hours: Double): ClockRecord {
+            val start = millisAt(date(2026, 6, day), LocalTime.of(7, 0))
+            return ClockRecord(
+                shiftDate = "2026-06-${"%02d".format(day)}",
+                clockInTime = start,
+                clockOutTime = start + (hours * 3_600_000).toLong(),
+            )
+        }
+        val records = listOf(
+            completedRecord(9, 5.9),
+            completedRecord(10, 6.0),
+            completedRecord(11, 7.9),
+            completedRecord(12, 8.0),
+            ClockRecord("2026-06-13", null, null, isLeave = true),
+        )
+
+        val progress = StatsCalculator.effectiveAttendanceProgress(
+            records = records,
+            settings = settings,
+            cycle = shortCycle,
+            today = date(2026, 6, 15),
+            now = LocalDateTime.of(2026, 6, 15, 12, 0),
+            zoneId = TestZone,
+        )
+
+        assertEquals(2.5, progress.effectiveAttendance, 0.001)
+        assertEquals(1.0, progress.absentCount, 0.001)
+        assertEquals(1, progress.leaveCount)
     }
 }

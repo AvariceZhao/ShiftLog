@@ -17,6 +17,7 @@ data class ExpectedClockOut(
 
 object ExpectedClockOutCalculator {
     private val DATE_PREFIX: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d")
+    private const val EFFECTIVE_ATTENDANCE_HOURS = 8.0
 
     fun calculate(
         clockInMs: Long?,
@@ -31,6 +32,25 @@ object ExpectedClockOutCalculator {
         val byCycleDays = hintByCycleDays(clockInMs, progress, zoneId)
         if (byTargetDays == null && byCycleDays == null) return null
         return ExpectedClockOut(byTargetDays, byCycleDays)
+    }
+
+    fun calculateForEffectiveAttendance(
+        clockInMs: Long?,
+        clockOutMs: Long?,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): ExpectedClockOut? {
+        if (clockInMs == null || clockOutMs != null) return null
+        return ExpectedClockOut(
+            byTargetDays = buildHint(
+                clockInMs = clockInMs,
+                hours = EFFECTIVE_ATTENDANCE_HOURS,
+                unreachable = false,
+                label = "按目标出勤",
+                hoursSuffix = "所需日均",
+                zoneId = zoneId,
+            ),
+            byCycleDays = null,
+        )
     }
 
     internal fun formatExpectedClockOut(

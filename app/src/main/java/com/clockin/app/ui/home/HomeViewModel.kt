@@ -7,12 +7,16 @@ import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.AppTimeTicker
 import com.clockin.app.domain.ClockRecord
+import com.clockin.app.domain.EffectiveAttendanceProgress
 import com.clockin.app.domain.CycleCalculator
 import com.clockin.app.domain.PunchResult
 import com.clockin.app.domain.RecordDetail
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.StatsCalculator
 import com.clockin.app.domain.TargetProgress
+import com.clockin.app.domain.TargetProgressMode
+import com.clockin.app.domain.WorkdayCalendar
+import com.clockin.app.domain.toLocalDate
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +36,11 @@ data class HomeUiState(
     val canClockOut: Boolean = false,
     val cycleLabel: String = "",
     val progress: TargetProgress? = null,
+    val effectiveProgress: EffectiveAttendanceProgress? = null,
     val elapsedWorkMillis: Long? = null,
+    val isLeave: Boolean = false,
+    val isRestDay: Boolean = false,
+    val calendarNotice: String? = null,
 )
 
 class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
@@ -57,8 +65,9 @@ class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
             ) { active, cycleRecords, _ ->
                 val (shiftDate, record) = active
                 val detail = record?.let { ShiftCalculator.buildRecordDetail(it, settings) }
+                val isRestDay = !WorkdayCalendar.isWorkday(shiftDate.toLocalDate(), settings, record)
                 val elapsedWorkMillis = record?.clockInTime
-                    ?.takeIf { record.clockOutTime == null }
+                    ?.takeIf { record.clockOutTime == null && !record.isLeave && !isRestDay }
                     ?.let { clockIn -> (System.currentTimeMillis() - clockIn).coerceAtLeast(0L) }
                 HomeUiState(
                     isReady = true,
@@ -68,7 +77,15 @@ class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
                     canClockOut = record?.clockInTime != null,
                     cycleLabel = cycle.label(),
                     progress = StatsCalculator.targetProgress(cycleRecords, settings, cycle),
+                    effectiveProgress = StatsCalculator.effectiveAttendanceProgress(
+                        cycleRecords,
+                        settings,
+                        cycle,
+                    ),
                     elapsedWorkMillis = elapsedWorkMillis,
+                    isLeave = record?.isLeave == true,
+                    isRestDay = isRestDay,
+                    calendarNotice = if (settings.useWorkdayCalendar) WorkdayCalendar.coverageNotice(cycle, settings) else null,
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
@@ -102,7 +119,11 @@ class HomeViewModel(private val repository: ClockRepository) : ViewModel() {
         val today = LocalDate.now()
         val cycle = CycleCalculator.currentCycle(settings.cycleStartDay, today)
         val records = repository.getCycleRecords(cycle)
-        if (StatsCalculator.targetProgress(records, settings, cycle, today).isTargetMet) {
+        val (shiftDate, record) = repository.loadActiveShift()
+        if (!WorkdayCalendar.isWorkday(shiftDate.toLocalDate(), settings, record)) return
+        val isTargetMet = settings.targetProgressMode == TargetProgressMode.DAYS_AND_HOURS &&
+            StatsCalculator.targetProgress(records, settings, cycle, today).isTargetMet
+        if (isTargetMet) {
             _fireworksEvent.emit(Unit)
         }
     }

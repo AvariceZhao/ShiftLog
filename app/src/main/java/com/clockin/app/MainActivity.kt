@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         (application as ClockInApplication).refreshWidgets()
+        (application as ClockInApplication).refreshHolidayCalendarIfNeeded()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

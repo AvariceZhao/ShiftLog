@@ -6,6 +6,30 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+enum class TargetProgressMode {
+    DAYS_AND_HOURS,
+    EFFECTIVE_ATTENDANCE,
+}
+
+enum class DaySchedule { AUTO, WORKDAY, REST_DAY }
+
+data class AttendanceTier(
+    val minimumHours: Float,
+    val attendanceCredit: Float,
+    val absenceCredit: Float = 0f,
+) {
+    val isValid: Boolean
+        get() = minimumHours.isFinite() && minimumHours >= 0f &&
+            attendanceCredit.isFinite() && attendanceCredit >= 0f &&
+            absenceCredit.isFinite() && absenceCredit >= 0f
+}
+
+val DefaultAttendanceTiers = listOf(
+    AttendanceTier(minimumHours = 0f, attendanceCredit = 0.5f),
+    AttendanceTier(minimumHours = 6f, attendanceCredit = 0.5f),
+    AttendanceTier(minimumHours = 8f, attendanceCredit = 1f),
+)
+
 data class AppSettings(
     val standardClockIn: LocalTime = LocalTime.of(7, 0),
     val standardClockOut: LocalTime = LocalTime.of(5, 0),
@@ -25,12 +49,21 @@ data class AppSettings(
     val showHomeTargetProgress: Boolean = true,
     /** 历史页是否显示当前周期的汇总卡片 */
     val showHistoryCycleSummary: Boolean = true,
+    /** 打卡页目标进度的统计口径 */
+    val targetProgressMode: TargetProgressMode = TargetProgressMode.EFFECTIVE_ATTENDANCE,
+    /** 按最低工时升序匹配的有效出勤折算规则 */
+    val attendanceTiers: List<AttendanceTier> = DefaultAttendanceTiers,
+    val useWorkdayCalendar: Boolean = true,
+    /** Runtime calendar cache; refreshed independently of user preferences and backups. */
+    val holidayCalendars: Map<Int, HolidayCalendarYear> = emptyMap(),
 )
 
 data class ClockRecord(
     val shiftDate: String,
     val clockInTime: Long?,
     val clockOutTime: Long?,
+    val isLeave: Boolean = false,
+    val daySchedule: DaySchedule = DaySchedule.AUTO,
 )
 
 data class PayCycle(
@@ -90,6 +123,13 @@ data class TargetProgress(
     val isTargetMet: Boolean
         get() = remainingDays <= 0 && remainingHours <= 0
 }
+
+data class EffectiveAttendanceProgress(
+    val effectiveAttendance: Double,
+    val absentCount: Double,
+    val leaveCount: Int,
+    val cycleDaysRemaining: Int,
+)
 
 object DateFormats {
     val SHIFT_DATE: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE

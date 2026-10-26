@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.clockin.app.domain.StatsCalculator
 import com.clockin.app.domain.CycleStats
+import com.clockin.app.domain.EffectiveAttendanceProgress
 import com.clockin.app.domain.TargetProgress
 import com.clockin.app.ui.theme.TextSecondary
 
@@ -145,6 +146,54 @@ fun TargetProgressCard(progress: TargetProgress, modifier: Modifier = Modifier) 
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun EffectiveAttendanceProgressCard(
+    progress: EffectiveAttendanceProgress,
+    modifier: Modifier = Modifier,
+) {
+    AppCard(modifier = modifier) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(AppIcons.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text("有效出勤", style = MaterialTheme.typography.titleLarge)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                SummaryMetric(
+                    label = "折算出勤",
+                    value = "${StatsCalculator.formatAttendance(progress.effectiveAttendance)} 次",
+                    modifier = Modifier.weight(1f),
+                )
+                SummaryMetric(
+                    label = "折算缺勤",
+                    value = "${StatsCalculator.formatAttendance(progress.absentCount)} 次",
+                    modifier = Modifier.weight(1f),
+                )
+                SummaryMetric(
+                    label = "请假",
+                    value = "${progress.leaveCount} 天",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            StatRow(label = "本周期剩余", value = "${progress.cycleDaysRemaining} 天")
         }
     }
 }

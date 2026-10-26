@@ -28,6 +28,7 @@ import com.clockin.app.domain.CycleDayStatus
 import com.clockin.app.domain.CycleDayStatusCalculator
 import com.clockin.app.domain.PayCycle
 import com.clockin.app.domain.ShiftCalculator
+import com.clockin.app.domain.WorkdayCalendar
 import com.clockin.app.domain.toShiftDateString
 import com.clockin.app.ui.components.AppCard
 import com.clockin.app.ui.theme.NightBorder
@@ -42,6 +43,13 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+
+private val CalendarNormalFill = Color(0xFF315C48)
+private val CalendarNormalBorder = Color(0xFF5F9E7B)
+private val CalendarHoursColor = Color(0xFFC5D8E8)
+private val CalendarLeaveFill = Color(0xFF294B5A)
+private val CalendarLeaveBorder = Color(0xFF5D91A6)
+private val CalendarRestFill = Color(0xFF303942)
 
 @Composable
 fun CycleCalendarCard(
@@ -62,6 +70,11 @@ fun CycleCalendarCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("出勤日历", style = MaterialTheme.typography.titleLarge)
+            if (settings.useWorkdayCalendar) {
+                WorkdayCalendar.coverageNotice(cycle, settings)?.let { notice ->
+                    Text(notice, style = MaterialTheme.typography.bodySmall, color = StatusLate)
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -118,7 +131,7 @@ fun CycleCalendarCard(
                         val inCycle = cycle.contains(day)
                         val shiftDate = day.toShiftDateString()
                         val record = recordByDate[shiftDate]
-                        val status = if (inCycle) {
+                        val calculatedStatus = if (inCycle) {
                             CycleDayStatusCalculator.statusForDate(
                                 date = day,
                                 cycle = cycle,
@@ -128,7 +141,18 @@ fun CycleCalendarCard(
                         } else {
                             CycleDayStatus.OUT_OF_CYCLE
                         }
-                        val hoursLabel = record?.let { rec ->
+                        val status = if (!settings.showPunchStatus && calculatedStatus == CycleDayStatus.ISSUE) {
+                            if (record?.clockInTime != null && record.clockOutTime != null) {
+                                CycleDayStatus.NORMAL
+                            } else {
+                                CycleDayStatus.ABSENT
+                            }
+                        } else {
+                            calculatedStatus
+                        }
+                        val hoursLabel = record?.takeIf {
+                            !it.isLeave && WorkdayCalendar.isWorkday(day, settings, it)
+                        }?.let { rec ->
                             ShiftCalculator.buildRecordDetail(rec, settings).hoursWorked
                                 ?.let { ShiftCalculator.formatHoursShort(it, settings.calendarHoursDecimalPlaces) }
                         }
@@ -146,10 +170,14 @@ fun CycleCalendarCard(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LegendDot(color = StatusNormal.copy(alpha = 0.85f), label = "正常")
-                LegendDot(color = StatusLate.copy(alpha = 0.85f), label = "异常")
+                if (settings.showPunchStatus) {
+                    LegendDot(color = StatusLate.copy(alpha = 0.85f), label = "异常")
+                }
                 LegendDot(color = StatusMissed.copy(alpha = 0.55f), label = "缺勤")
+                LegendDot(color = CalendarLeaveBorder, label = "请假")
+                LegendDot(color = TextMuted, label = "休息")
             }
         }
     }
@@ -165,15 +193,19 @@ private fun CalendarDayCell(
     modifier: Modifier = Modifier,
 ) {
     val bg = when (status) {
-        CycleDayStatus.NORMAL -> StatusNormal.copy(alpha = 0.22f)
+        CycleDayStatus.NORMAL -> CalendarNormalFill
         CycleDayStatus.ISSUE -> StatusLate.copy(alpha = 0.22f)
         CycleDayStatus.ABSENT -> StatusMissed.copy(alpha = 0.18f)
+        CycleDayStatus.LEAVE -> CalendarLeaveFill
+        CycleDayStatus.REST -> CalendarRestFill
         CycleDayStatus.PENDING -> Color.Transparent
         CycleDayStatus.OUT_OF_CYCLE -> Color.Transparent
     }
     val borderColor = when {
         !enabled -> Color.Transparent
         status == CycleDayStatus.PENDING -> NightBorder.copy(alpha = 0.35f)
+        status == CycleDayStatus.NORMAL -> CalendarNormalBorder
+        status == CycleDayStatus.LEAVE -> CalendarLeaveBorder
         else -> bg.copy(alpha = 0.9f)
     }
     Box(
@@ -196,7 +228,12 @@ private fun CalendarDayCell(
                 ),
                 color = if (enabled) MaterialTheme.colorScheme.onSurface else TextMuted.copy(alpha = 0.35f),
             )
-            hoursLabel?.let { hours ->
+            val secondaryLabel = when (status) {
+                CycleDayStatus.REST -> "休"
+                CycleDayStatus.LEAVE -> "假"
+                else -> hoursLabel
+            }
+            secondaryLabel?.let { hours ->
                 Text(
                     text = hours,
                     style = MaterialTheme.typography.labelSmall.copy(
@@ -204,7 +241,11 @@ private fun CalendarDayCell(
                         lineHeight = 9.sp,
                     ),
                     fontFamily = FontFamily.Monospace,
-                    color = if (enabled) MaterialTheme.colorScheme.secondary else TextMuted.copy(alpha = 0.35f),
+                    color = when {
+                        !enabled -> TextMuted.copy(alpha = 0.35f)
+                        status == CycleDayStatus.REST -> TextMuted
+                        else -> CalendarHoursColor
+                    },
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                 )

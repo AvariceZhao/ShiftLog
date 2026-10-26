@@ -79,4 +79,18 @@ class ExpectedClockOutCalculatorTest {
         assertTrue(result!!.byTargetDays!!.unreachable)
         assertEquals("无法达成", result.byTargetDays!!.timeText)
     }
+
+    @Test
+    fun effectiveAttendance_usesFixedEightHoursAndOmitsCalendarHint() {
+        val clockIn = millisAt(date(2026, 6, 10), LocalTime.of(7, 15))
+        val result = ExpectedClockOutCalculator.calculateForEffectiveAttendance(
+            clockInMs = clockIn,
+            clockOutMs = null,
+            zoneId = TestZone,
+        )
+
+        assertEquals("按目标出勤", result?.byTargetDays?.label)
+        assertEquals("15:15", result?.byTargetDays?.timeText)
+        assertNull(result?.byCycleDays)
+    }
 }

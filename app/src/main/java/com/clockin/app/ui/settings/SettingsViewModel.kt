@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.AppSettings
+import com.clockin.app.holiday.HolidayCalendarStatus
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -21,6 +22,16 @@ class SettingsViewModel(private val repository: ClockRepository) : ViewModel() {
         SharingStarted.WhileSubscribed(5000),
         AppSettings(),
     )
+
+    val holidayCalendarStatus = repository.holidayCalendarStatus.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        HolidayCalendarStatus(),
+    )
+
+    fun refreshHolidayCalendar() {
+        viewModelScope.launch { repository.refreshHolidayCalendar(force = true) }
+    }
 
     fun update(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch {

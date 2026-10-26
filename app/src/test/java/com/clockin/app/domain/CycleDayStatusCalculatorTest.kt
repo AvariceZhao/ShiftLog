@@ -44,6 +44,20 @@ class CycleDayStatusCalculatorTest {
     }
 
     @Test
+    fun leave_dayIsNotAbsent() {
+        val shift = date(2026, 6, 10)
+        val status = CycleDayStatusCalculator.statusForDate(
+            date = shift,
+            cycle = cycle,
+            record = ClockRecord(shift.toShiftDateString(), null, null, isLeave = true),
+            settings = settings,
+            today = shift.plusDays(1),
+            now = LocalDateTime.of(shift.plusDays(1), java.time.LocalTime.NOON),
+        )
+        assertEquals(CycleDayStatus.LEAVE, status)
+    }
+
+    @Test
     fun csvImport_parsesExportedRow() {
         val csv = """
             日期,上班时间,下班时间,工时(小时),备注
@@ -54,5 +68,17 @@ class CycleDayStatusCalculatorTest {
         assertEquals("2026-06-16", records.first().shiftDate)
         assertTrue(records.first().clockInTime != null)
         assertTrue(records.first().clockOutTime != null)
+    }
+
+    @Test
+    fun csvImport_parsesLeaveRowWithoutPunchTimes() {
+        val csv = """
+            日期,上班时间,下班时间,工时(小时),备注
+            2026/06/16,,,,请假
+        """.trimIndent()
+        val record = BackupImporter.parseCsv(csv, settings, TestZone).getOrThrow().single()
+        assertTrue(record.isLeave)
+        assertEquals(null, record.clockInTime)
+        assertEquals(null, record.clockOutTime)
     }
 }

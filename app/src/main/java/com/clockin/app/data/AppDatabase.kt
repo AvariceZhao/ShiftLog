@@ -4,17 +4,44 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [ClockRecordEntity::class],
-    version = 1,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun clockRecordDao(): ClockRecordDao
 
     companion object {
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE clock_records ADD COLUMN isLeave INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Version 2 fresh installs and upgrades had different isLeave SQL defaults.
+                db.execSQL(
+                    "CREATE TABLE clock_records_new (shiftDate TEXT NOT NULL PRIMARY KEY, " +
+                        "clockInTime INTEGER, clockOutTime INTEGER, " +
+                        "isLeave INTEGER NOT NULL DEFAULT 0, daySchedule TEXT NOT NULL DEFAULT 'AUTO')",
+                )
+                db.execSQL(
+                    "INSERT INTO clock_records_new (shiftDate, clockInTime, clockOutTime, isLeave) " +
+                        "SELECT shiftDate, clockInTime, clockOutTime, isLeave FROM clock_records",
+                )
+                db.execSQL("DROP TABLE clock_records")
+                db.execSQL("ALTER TABLE clock_records_new RENAME TO clock_records")
+            }
+        }
+
         fun create(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "clock_in.db").build()
+            Room.databaseBuilder(context, AppDatabase::class.java, "clock_in.db")
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .build()
     }
 }

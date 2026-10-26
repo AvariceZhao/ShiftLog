@@ -46,6 +46,17 @@ object BackupExporter {
         put("showPunchStatus", settings.showPunchStatus)
         put("showHomeTargetProgress", settings.showHomeTargetProgress)
         put("showHistoryCycleSummary", settings.showHistoryCycleSummary)
+        put("useWorkdayCalendar", settings.useWorkdayCalendar)
+        put("targetProgressMode", settings.targetProgressMode.name)
+        put("attendanceTiers", JSONArray().apply {
+            settings.attendanceTiers.sortedBy { it.minimumHours }.forEach { tier ->
+                put(JSONObject().apply {
+                    put("minimumHours", tier.minimumHours.toDouble())
+                    put("attendanceCredit", tier.attendanceCredit.toDouble())
+                    put("absenceCredit", tier.absenceCredit.toDouble())
+                })
+            }
+        })
     }
 
     private fun recordsToJson(records: List<ClockRecord>): JSONArray {
@@ -56,6 +67,8 @@ object BackupExporter {
                     put("shiftDate", record.shiftDate)
                     put("clockInTime", record.clockInTime ?: JSONObject.NULL)
                     put("clockOutTime", record.clockOutTime ?: JSONObject.NULL)
+                    put("isLeave", record.isLeave)
+                    put("daySchedule", record.daySchedule.name)
                 },
             )
         }
@@ -111,6 +124,15 @@ object BackupImporter {
         showPunchStatus = json.optBoolean("showPunchStatus", true),
         showHomeTargetProgress = json.optBoolean("showHomeTargetProgress", true),
         showHistoryCycleSummary = json.optBoolean("showHistoryCycleSummary", true),
+        useWorkdayCalendar = json.optBoolean("useWorkdayCalendar", true),
+        targetProgressMode = json.optString(
+            "targetProgressMode",
+            TargetProgressMode.EFFECTIVE_ATTENDANCE.name,
+        ).let {
+            runCatching { TargetProgressMode.valueOf(it) }
+                .getOrDefault(TargetProgressMode.EFFECTIVE_ATTENDANCE)
+        },
+        attendanceTiers = parseAttendanceTiers(json.optJSONArray("attendanceTiers")),
     )
 
     private fun parseRecords(array: JSONArray): List<ClockRecord> {
@@ -122,9 +144,27 @@ object BackupImporter {
                 shiftDate = shiftDate,
                 clockInTime = if (item.isNull("clockInTime")) null else item.getLong("clockInTime"),
                 clockOutTime = if (item.isNull("clockOutTime")) null else item.getLong("clockOutTime"),
+                isLeave = item.optBoolean("isLeave", false),
+                daySchedule = runCatching {
+                    DaySchedule.valueOf(item.optString("daySchedule", DaySchedule.AUTO.name))
+                }.getOrDefault(DaySchedule.AUTO),
             )
         }
         return records
+    }
+
+    private fun parseAttendanceTiers(array: JSONArray?): List<AttendanceTier> {
+        if (array == null) return DefaultAttendanceTiers
+        val tiers = mutableListOf<AttendanceTier>()
+        for (i in 0 until array.length()) {
+            val item = array.optJSONObject(i) ?: continue
+            val hours = item.optDouble("minimumHours", -1.0).toFloat()
+            val credit = item.optDouble("attendanceCredit", -1.0).toFloat()
+            val absence = item.optDouble("absenceCredit", 0.0).toFloat()
+            AttendanceTier(hours, credit, absence).takeIf { it.isValid }?.let(tiers::add)
+        }
+        return tiers.distinctBy { it.minimumHours }.sortedBy { it.minimumHours }
+            .ifEmpty { DefaultAttendanceTiers }
     }
 
     private fun parseCsvLine(
@@ -138,13 +178,21 @@ object BackupImporter {
         val date = shiftDate.toLocalDate()
         val clockIn = parts[1].takeIf { it.isNotBlank() }?.let { parseTime(it) }
         val clockOut = parts[2].takeIf { it.isNotBlank() }?.let { parseTime(it) }
-        if (clockIn == null && clockOut == null) return null
+        val isLeave = parts.getOrNull(4)?.trim() == "请假"
+        val daySchedule = when (parts.getOrNull(5)?.trim()) {
+            "工作日" -> DaySchedule.WORKDAY
+            "休息日" -> DaySchedule.REST_DAY
+            else -> DaySchedule.AUTO
+        }
+        if (clockIn == null && clockOut == null && !isLeave && daySchedule == DaySchedule.AUTO) return null
         if (parts[1].isNotBlank() && clockIn == null) return null
         if (parts[2].isNotBlank() && clockOut == null) return null
         return ClockRecord(
             shiftDate = shiftDate,
             clockInTime = clockIn?.let { timeToMillis(date, it, isClockOut = false, settings, zoneId) },
             clockOutTime = clockOut?.let { timeToMillis(date, it, isClockOut = true, settings, zoneId) },
+            isLeave = isLeave,
+            daySchedule = daySchedule,
         )
     }
 

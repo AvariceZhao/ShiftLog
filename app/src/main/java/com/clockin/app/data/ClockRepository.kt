@@ -4,26 +4,55 @@ import com.clockin.app.domain.AppBackup
 import com.clockin.app.domain.AppSettings
 import com.clockin.app.domain.AppTimeTicker
 import com.clockin.app.domain.ClockRecord
+import com.clockin.app.domain.DaySchedule
 import com.clockin.app.domain.PayCycle
 import com.clockin.app.domain.PunchResult
 import com.clockin.app.domain.ShiftCalculator
+import com.clockin.app.domain.toLocalDate
+import com.clockin.app.holiday.HolidayCalendarRepository
 import com.clockin.app.domain.toShiftDateString
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
+import java.time.LocalDate
 
 class ClockRepository(
     private val dao: ClockRecordDao,
     private val settingsRepository: SettingsRepository,
     private val db: AppDatabase,
+    private val holidayRepository: HolidayCalendarRepository,
     private val onRecordsChanged: () -> Unit = {},
     private val onSettingsChanged: () -> Unit = {},
 ) {
-    val settings: Flow<AppSettings> = settingsRepository.settings
+    val settings: Flow<AppSettings> = combine(
+        settingsRepository.settings,
+        holidayRepository.calendars,
+    ) { settings, calendars -> settings.copy(holidayCalendars = calendars) }
+        .distinctUntilChanged()
+
+    val holidayCalendarStatus = holidayRepository.status
+
+    suspend fun refreshHolidayCalendar(cycle: PayCycle? = null, force: Boolean = false) =
+        holidayRepository.refresh(
+            requestedYears = buildSet {
+                getAllRecords().forEach { record ->
+                    runCatching { record.shiftDate.toLocalDate().year }.getOrNull()?.let { year ->
+                        add(year)
+                        add(year + 1)
+                    }
+                }
+                cycle?.let {
+                    addAll(it.start.year..it.end.year + 1)
+                }
+            },
+            force = force,
+            today = LocalDate.now(),
+        )
 
     fun observeActiveShift(): Flow<Pair<String, ClockRecord?>> =
         combine(
@@ -61,6 +90,8 @@ class ClockRepository(
                 shiftDate = shiftDate,
                 clockInTime = System.currentTimeMillis(),
                 clockOutTime = existing?.clockOutTime,
+                isLeave = false,
+                daySchedule = existing?.daySchedule ?: DaySchedule.AUTO,
             ).toEntity(),
         )
         onRecordsChanged()
@@ -83,6 +114,8 @@ class ClockRepository(
                 shiftDate = shiftDate,
                 clockInTime = existing.clockInTime,
                 clockOutTime = nowMs,
+                isLeave = false,
+                daySchedule = existing.daySchedule,
             ).toEntity(),
         )
         onRecordsChanged()

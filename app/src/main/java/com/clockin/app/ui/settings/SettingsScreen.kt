@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +43,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.clockin.app.data.ClockRepository
 import com.clockin.app.domain.AppSettings
+import com.clockin.app.domain.AttendanceTier
+import com.clockin.app.domain.TargetProgressMode
 import com.clockin.app.ui.components.AppCard
 import com.clockin.app.ui.components.AppIcons
 import com.clockin.app.ui.components.ScreenBackground
@@ -53,6 +56,8 @@ import com.clockin.app.ui.theme.StatusMissed
 import com.clockin.app.ui.theme.TextMuted
 import com.clockin.app.ui.theme.TextSecondary
 import java.time.LocalTime
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import kotlinx.coroutines.delay
@@ -72,6 +77,9 @@ private data class SettingsForm(
     val showPunchStatus: Boolean,
     val showHomeTargetProgress: Boolean,
     val showHistoryCycleSummary: Boolean,
+    val targetProgressMode: TargetProgressMode,
+    val attendanceTiers: List<AttendanceTierForm>,
+    val useWorkdayCalendar: Boolean,
 ) {
     companion object {
         fun from(settings: AppSettings): SettingsForm = SettingsForm(
@@ -87,6 +95,15 @@ private data class SettingsForm(
             showPunchStatus = settings.showPunchStatus,
             showHomeTargetProgress = settings.showHomeTargetProgress,
             showHistoryCycleSummary = settings.showHistoryCycleSummary,
+            targetProgressMode = settings.targetProgressMode,
+            useWorkdayCalendar = settings.useWorkdayCalendar,
+            attendanceTiers = settings.attendanceTiers.sortedBy { it.minimumHours }.map {
+                AttendanceTierForm(
+                    minimumHoursText = it.minimumHours.toInputString(),
+                    attendanceCreditText = it.attendanceCredit.toInputString(),
+                    absenceCreditText = it.absenceCredit.toInputString(),
+                )
+            },
         )
     }
 
@@ -99,6 +116,18 @@ private data class SettingsForm(
     fun parseTargetDays(): Result<Int> = parseInt(targetDaysText, "目标出勤天数", 1, Int.MAX_VALUE)
 
     fun parseTargetHours(): Result<Float> = parseFloat(targetHoursText, "目标总工时")
+
+    fun parseAttendanceTiers(): Result<List<AttendanceTier>> = runCatching {
+        val parsed = attendanceTiers.map { tier ->
+            AttendanceTier(
+                minimumHours = parseFloat(tier.minimumHoursText, "最低工时").getOrThrow(),
+                attendanceCredit = parseFloat(tier.attendanceCreditText, "出勤次数").getOrThrow(),
+                absenceCredit = parseFloat(tier.absenceCreditText, "缺勤次数").getOrThrow(),
+            )
+        }
+        require(parsed.distinctBy { it.minimumHours }.size == parsed.size) { "最低工时不能重复" }
+        parsed.sortedBy { it.minimumHours }
+    }
 
     private fun parseTime(raw: String, label: String): Result<LocalTime> {
         val text = raw.trim()
@@ -133,7 +162,7 @@ private data class SettingsForm(
             return Result.failure(IllegalArgumentException("$label 不能为空"))
         }
         val value = text.toFloatOrNull()
-        if (value == null) {
+        if (value == null || !value.isFinite()) {
             return Result.failure(IllegalArgumentException("$label 请输入数字"))
         }
         if (value < 0f) {
@@ -142,6 +171,12 @@ private data class SettingsForm(
         return Result.success(value)
     }
 }
+
+private data class AttendanceTierForm(
+    val minimumHoursText: String,
+    val attendanceCreditText: String,
+    val absenceCreditText: String,
+)
 
 private fun Float.toInputString(): String {
     val whole = toLong()
@@ -164,7 +199,9 @@ fun SettingsScreen(
 ) {
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory(repository))
     val saved by viewModel.settings.collectAsStateWithLifecycle()
-    var form by remember(saved) { mutableStateOf(SettingsForm.from(saved)) }
+    val calendarStatus by viewModel.holidayCalendarStatus.collectAsStateWithLifecycle()
+    val editableSettings = saved.copy(holidayCalendars = emptyMap())
+    var form by remember(editableSettings) { mutableStateOf(SettingsForm.from(editableSettings)) }
     var message by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
     var saveNoticeVersion by remember { mutableIntStateOf(0) }
@@ -269,7 +306,56 @@ fun SettingsScreen(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text("工资周期", style = MaterialTheme.typography.titleLarge)
+                    Text("周期", style = MaterialTheme.typography.titleLarge)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("排除周末和节假日", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "休息日不计工时、出勤和缺勤，调休补班日正常统计",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                        Switch(
+                            checked = form.useWorkdayCalendar,
+                            onCheckedChange = { checked ->
+                                form = form.copy(useWorkdayCalendar = checked)
+                                viewModel.update { it.copy(useWorkdayCalendar = checked) }
+                                markSaved()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = AmberPrimary,
+                                checkedTrackColor = AmberPrimary.copy(alpha = 0.4f),
+                            ),
+                        )
+                    }
+                    if (form.useWorkdayCalendar) {
+                        val checkedAt = calendarStatus.lastCheckedMillis?.let { millis ->
+                            Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                        } ?: "尚未检查"
+                        Text(
+                            "最近检查：$checkedAt",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                        calendarStatus.errorMessage?.let {
+                            Text("检查未完成，请稍后重试", style = MaterialTheme.typography.bodySmall, color = StatusMissed)
+                        }
+                        TextButton(
+                            enabled = !calendarStatus.isRefreshing,
+                            onClick = viewModel::refreshHolidayCalendar,
+                        ) {
+                            Text(
+                                if (calendarStatus.isRefreshing) "正在检查节假日…" else "立即更新节假日安排",
+                                color = if (calendarStatus.isRefreshing) TextSecondary else AmberPrimary,
+                            )
+                        }
+                    }
                     SettingTextField(
                         label = "周期起始日",
                         value = form.cycleStartDayText,
@@ -330,7 +416,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("打卡状态标签", style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "在打卡页显示迟到、早退和缺卡等状态",
+                                "在打卡页与历史日历显示迟到、早退和缺卡等状态",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary,
                             )
@@ -354,9 +440,9 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("目标进度", style = MaterialTheme.typography.bodyLarge)
+                            Text("进度与统计", style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "在打卡页显示当前周期的目标进度",
+                                "在打卡页显示当前周期的目标进度或有效出勤统计",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary,
                             )
@@ -475,35 +561,193 @@ fun SettingsScreen(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text("目标", style = MaterialTheme.typography.titleLarge)
-                    SettingTextField(
-                        label = "目标出勤天数",
-                        value = form.targetDaysText,
-                        onValueChange = { form = form.copy(targetDaysText = it.filter(Char::isDigit)) },
-                        placeholder = "21",
-                        keyboardType = KeyboardType.Number,
-                        onFocusLost = {
-                            saveField(form.parseTargetDays()) { settings, value ->
-                                settings.copy(targetDays = value)
+                    Text("进度统计", style = MaterialTheme.typography.titleLarge)
+                    Text("进度模式", style = MaterialTheme.typography.bodyLarge)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = form.targetProgressMode == TargetProgressMode.DAYS_AND_HOURS,
+                            onClick = {
+                                form = form.copy(targetProgressMode = TargetProgressMode.DAYS_AND_HOURS)
+                                viewModel.update { it.copy(targetProgressMode = TargetProgressMode.DAYS_AND_HOURS) }
+                                markSaved()
+                            },
+                            label = { Text("天数 + 工时") },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AmberPrimary.copy(alpha = 0.18f),
+                                selectedLabelColor = AmberPrimary,
+                            ),
+                        )
+                        FilterChip(
+                            selected = form.targetProgressMode == TargetProgressMode.EFFECTIVE_ATTENDANCE,
+                            onClick = {
+                                form = form.copy(targetProgressMode = TargetProgressMode.EFFECTIVE_ATTENDANCE)
+                                viewModel.update { it.copy(targetProgressMode = TargetProgressMode.EFFECTIVE_ATTENDANCE) }
+                                markSaved()
+                            },
+                            label = { Text("有效出勤") },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AmberPrimary.copy(alpha = 0.18f),
+                                selectedLabelColor = AmberPrimary,
+                            ),
+                        )
+                    }
+                    if (form.targetProgressMode == TargetProgressMode.DAYS_AND_HOURS) {
+                        SettingTextField(
+                            label = "目标出勤天数",
+                            value = form.targetDaysText,
+                            onValueChange = { form = form.copy(targetDaysText = it.filter(Char::isDigit)) },
+                            placeholder = "21",
+                            keyboardType = KeyboardType.Number,
+                            onFocusLost = {
+                                saveField(form.parseTargetDays()) { settings, value ->
+                                    settings.copy(targetDays = value)
+                                }
+                            },
+                        )
+                        SettingTextField(
+                            label = "目标总工时 (小时)",
+                            value = form.targetHoursText,
+                            onValueChange = { text ->
+                                form = form.copy(
+                                    targetHoursText = text.filter { it.isDigit() || it == '.' },
+                                )
+                            },
+                            placeholder = "160",
+                            keyboardType = KeyboardType.Decimal,
+                            onFocusLost = {
+                                saveField(form.parseTargetHours()) { settings, value ->
+                                    settings.copy(targetHours = value)
+                                }
+                            },
+                        )
+                    } else {
+                        Text(
+                            "出勤与缺勤折算分档",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            "按当日完整打卡工时匹配最高适用档，出勤和缺勤次数可独立设置。全天无打卡的工作日仍记缺勤 1 次；请假和休息日不计入。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                        form.attendanceTiers.forEachIndexed { index, tier ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .background(NightSurfaceHigh.copy(alpha = 0.35f))
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    SettingTextField(
+                                        label = "最低工时 (h)",
+                                        value = tier.minimumHoursText,
+                                        onValueChange = { text ->
+                                            val updated = form.attendanceTiers.toMutableList()
+                                            updated[index] = updated[index].copy(
+                                                minimumHoursText = text.filter { it.isDigit() || it == '.' },
+                                            )
+                                            form = form.copy(attendanceTiers = updated)
+                                        },
+                                        placeholder = "0",
+                                        keyboardType = KeyboardType.Decimal,
+                                        modifier = Modifier.weight(1f),
+                                        onFocusLost = {
+                                            saveField(form.parseAttendanceTiers()) { settings, value ->
+                                                settings.copy(attendanceTiers = value)
+                                            }
+                                        },
+                                    )
+                                    if (form.attendanceTiers.size > 1) {
+                                        TextButton(
+                                            onClick = {
+                                                val updated = form.attendanceTiers.toMutableList().also { it.removeAt(index) }
+                                                form = form.copy(attendanceTiers = updated)
+                                                saveField(form.parseAttendanceTiers()) { settings, value ->
+                                                    settings.copy(attendanceTiers = value)
+                                                }
+                                            },
+                                        ) { Text("删除", color = StatusMissed) }
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    SettingTextField(
+                                        label = "出勤次数",
+                                        value = tier.attendanceCreditText,
+                                        onValueChange = { text ->
+                                            val updated = form.attendanceTiers.toMutableList()
+                                            updated[index] = updated[index].copy(
+                                                attendanceCreditText = text.filter { it.isDigit() || it == '.' },
+                                            )
+                                            form = form.copy(attendanceTiers = updated)
+                                        },
+                                        placeholder = "0.5",
+                                        keyboardType = KeyboardType.Decimal,
+                                        modifier = Modifier.weight(1f),
+                                        onFocusLost = {
+                                            saveField(form.parseAttendanceTiers()) { settings, value ->
+                                                settings.copy(attendanceTiers = value)
+                                            }
+                                        },
+                                    )
+                                    SettingTextField(
+                                        label = "缺勤次数",
+                                        value = tier.absenceCreditText,
+                                        onValueChange = { text ->
+                                            val updated = form.attendanceTiers.toMutableList()
+                                            updated[index] = updated[index].copy(
+                                                absenceCreditText = text.filter { it.isDigit() || it == '.' },
+                                            )
+                                            form = form.copy(attendanceTiers = updated)
+                                        },
+                                        placeholder = "0",
+                                        keyboardType = KeyboardType.Decimal,
+                                        modifier = Modifier.weight(1f),
+                                        onFocusLost = {
+                                            saveField(form.parseAttendanceTiers()) { settings, value ->
+                                                settings.copy(attendanceTiers = value)
+                                            }
+                                        },
+                                    )
+                                }
                             }
-                        },
-                    )
-                    SettingTextField(
-                        label = "目标总工时 (小时)",
-                        value = form.targetHoursText,
-                        onValueChange = { text ->
-                            form = form.copy(
-                                targetHoursText = text.filter { it.isDigit() || it == '.' },
-                            )
-                        },
-                        placeholder = "160",
-                        keyboardType = KeyboardType.Decimal,
-                        onFocusLost = {
-                            saveField(form.parseTargetHours()) { settings, value ->
-                                settings.copy(targetHours = value)
-                            }
-                        },
-                    )
+                        }
+                        TextButton(
+                            onClick = {
+                                form.parseAttendanceTiers().onSuccess { current ->
+                                    val newTier = AttendanceTier(
+                                        minimumHours = (current.lastOrNull()?.minimumHours ?: 0f) + 1f,
+                                        attendanceCredit = current.lastOrNull()?.attendanceCredit ?: 0.5f,
+                                        absenceCredit = current.lastOrNull()?.absenceCredit ?: 0f,
+                                    )
+                                    val updated = current + newTier
+                                    form = form.copy(attendanceTiers = updated.map {
+                                        AttendanceTierForm(
+                                            minimumHoursText = it.minimumHours.toInputString(),
+                                            attendanceCreditText = it.attendanceCredit.toInputString(),
+                                            absenceCreditText = it.absenceCredit.toInputString(),
+                                        )
+                                    })
+                                    viewModel.update { it.copy(attendanceTiers = updated) }
+                                    markSaved()
+                                }.onFailure { error ->
+                                    message = error.message ?: "请先完成当前分档"
+                                    isError = true
+                                }
+                            },
+                        ) {
+                            Text("+ 新增一档", color = AmberPrimary)
+                        }
+                    }
                 }
             }
 
@@ -562,6 +806,7 @@ private fun SettingTextField(
     placeholder: String,
     keyboardType: KeyboardType = KeyboardType.Text,
     onFocusLost: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     var wasFocused by remember { mutableStateOf(false) }
     OutlinedTextField(
@@ -569,7 +814,7 @@ private fun SettingTextField(
         onValueChange = onValueChange,
         label = { Text(label) },
         placeholder = { Text(placeholder) },
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .onFocusChanged { focusState ->
                 if (wasFocused && !focusState.isFocused) onFocusLost()

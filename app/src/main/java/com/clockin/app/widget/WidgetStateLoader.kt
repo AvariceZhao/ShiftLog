@@ -10,6 +10,7 @@ import com.clockin.app.domain.DateFormats
 import com.clockin.app.domain.PayCycle
 import com.clockin.app.domain.ShiftCalculator
 import com.clockin.app.domain.StatsCalculator
+import com.clockin.app.domain.WorkdayCalendar
 import com.clockin.app.domain.toLocalDate
 import com.clockin.app.domain.toLocalDateTime
 import java.time.format.DateTimeFormatter
@@ -89,7 +90,9 @@ object WidgetStateLoader {
             requiredDailyByCycleDays = progress.requiredDailyByCycleDays,
             requiredDailyByCycleDaysUnreachable = progress.requiredDailyByCycleDaysUnreachable,
             daysTargetMetHoursNotMet = progress.daysTargetMetHoursNotMet,
-            hoursWorkedToday = detail?.hoursWorked,
+            hoursWorkedToday = detail?.hoursWorked?.takeIf {
+                record?.isLeave != true && WorkdayCalendar.isWorkday(shiftDate.toLocalDate(), settings, record)
+            },
             appWidgetId = appWidgetId,
         )
     }

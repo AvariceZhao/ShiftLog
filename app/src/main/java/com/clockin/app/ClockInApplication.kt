@@ -3,7 +3,10 @@ package com.clockin.app
 import android.app.Application
 import com.clockin.app.data.AppDatabase
 import com.clockin.app.data.ClockRepository
+import com.clockin.app.data.DataStoreHolidayCalendarStore
 import com.clockin.app.data.SettingsRepository
+import com.clockin.app.holiday.HolidayCalendarRepository
+import com.clockin.app.holiday.HolidayCalendarSyncScheduler
 import com.clockin.app.update.UpdateCoordinator
 import com.clockin.app.widget.WidgetClockInAlarmScheduler
 import com.clockin.app.widget.WidgetRefresh
@@ -29,16 +32,35 @@ class ClockInApplication : Application() {
         updateCoordinator = UpdateCoordinator(this)
         val db = AppDatabase.create(this)
         val settingsRepository = SettingsRepository(this)
+        val holidayRepository = HolidayCalendarRepository(
+            store = DataStoreHolidayCalendarStore(this),
+            onCalendarsChanged = { refreshWidgets() },
+        )
         repository = ClockRepository(
             dao = db.clockRecordDao(),
             settingsRepository = settingsRepository,
             db = db,
+            holidayRepository = holidayRepository,
             onRecordsChanged = { refreshWidgets() },
             onSettingsChanged = { scheduleWidgetRefreshJobs() },
         )
         scheduleWidgetRefreshJobs()
+        HolidayCalendarSyncScheduler.schedule(this)
+        refreshHolidayCalendarIfNeeded()
         applicationScope.launch {
             updateCoordinator.checkForUpdate(manual = false)
+        }
+    }
+
+    fun refreshHolidayCalendarIfNeeded() {
+        applicationScope.launch {
+            try {
+                repository.refreshHolidayCalendar()
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                android.util.Log.w("HolidayCalendar", "Unable to refresh calendar cache", error)
+            }
         }
     }
 

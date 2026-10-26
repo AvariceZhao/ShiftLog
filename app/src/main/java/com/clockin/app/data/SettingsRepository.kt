@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.clockin.app.domain.AppSettings
+import com.clockin.app.domain.AttendanceTierCodec
+import com.clockin.app.domain.TargetProgressMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalTime
@@ -30,6 +32,9 @@ class SettingsRepository(private val context: Context) {
     private val showPunchStatusKey = booleanPreferencesKey("show_punch_status")
     private val showHomeTargetProgressKey = booleanPreferencesKey("show_home_target_progress")
     private val showHistoryCycleSummaryKey = booleanPreferencesKey("show_history_cycle_summary")
+    private val targetProgressModeKey = stringPreferencesKey("target_progress_mode")
+    private val attendanceTiersKey = stringPreferencesKey("attendance_tiers")
+    private val useWorkdayCalendarKey = booleanPreferencesKey("use_workday_calendar")
 
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -49,6 +54,11 @@ class SettingsRepository(private val context: Context) {
             showPunchStatus = prefs[showPunchStatusKey] ?: true,
             showHomeTargetProgress = prefs[showHomeTargetProgressKey] ?: true,
             showHistoryCycleSummary = prefs[showHistoryCycleSummaryKey] ?: true,
+            targetProgressMode = prefs[targetProgressModeKey]
+                ?.let { runCatching { TargetProgressMode.valueOf(it) }.getOrNull() }
+                ?: TargetProgressMode.EFFECTIVE_ATTENDANCE,
+            attendanceTiers = AttendanceTierCodec.decode(prefs[attendanceTiersKey]),
+            useWorkdayCalendar = prefs[useWorkdayCalendarKey] ?: true,
         )
     }
 
@@ -66,6 +76,10 @@ class SettingsRepository(private val context: Context) {
             prefs[showPunchStatusKey] = settings.showPunchStatus
             prefs[showHomeTargetProgressKey] = settings.showHomeTargetProgress
             prefs[showHistoryCycleSummaryKey] = settings.showHistoryCycleSummary
+            prefs[targetProgressModeKey] = settings.targetProgressMode.name
+            prefs[attendanceTiersKey] = AttendanceTierCodec.encode(settings.attendanceTiers)
+            prefs[useWorkdayCalendarKey] = settings.useWorkdayCalendar
         }
     }
+
 }
