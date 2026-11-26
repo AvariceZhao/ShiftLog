@@ -284,6 +284,12 @@ fun RecordEditDialog(
                 onClick = {
                     error = null
                     runCatching {
+                        val courseOnly = record.courseMinutes > 0 && when (mode) {
+                            EditMode.Duration -> optionalClockInText.isBlank() && optionalClockOutText.isBlank() &&
+                                (durationText.isBlank() || durationText.toDoubleOrNull() == 0.0)
+                            EditMode.ExactTime -> exactClockInText.isBlank() && exactClockOutText.isBlank()
+                            EditMode.Schedule -> false
+                        }
                         val saved = if (mode == EditMode.Schedule) {
                             record.copy(
                                 shiftDate = parseShiftDate(shiftDate).toShiftDateString(),
@@ -296,6 +302,8 @@ fun RecordEditDialog(
                                 clockOutTime = null,
                                 isLeave = true,
                             )
+                        } else if (courseOnly) {
+                            ClockRecord(parseShiftDate(shiftDate).toShiftDateString(), null, null)
                         } else when (mode) {
                             EditMode.Duration -> buildFromDuration(
                                 shiftDate = shiftDate,
@@ -313,7 +321,7 @@ fun RecordEditDialog(
                             )
                             EditMode.Schedule -> throw IllegalStateException("无效的编辑模式")
                         }
-                        onSave(saved.copy(daySchedule = daySchedule))
+                        onSave(saved.copy(daySchedule = daySchedule, courseMinutes = record.courseMinutes))
                     }.onFailure { e ->
                         error = e.message ?: "保存失败，请检查输入"
                     }
@@ -325,7 +333,7 @@ fun RecordEditDialog(
         dismissButton = {
             Row {
                 if (record.clockInTime != null || record.clockOutTime != null || record.isLeave ||
-                    record.daySchedule != DaySchedule.AUTO
+                    record.daySchedule != DaySchedule.AUTO || record.courseMinutes > 0
                 ) {
                     TextButton(onClick = onDelete) {
                         Text("删除", color = StatusMissed)
@@ -564,7 +572,7 @@ private fun buildFromDuration(
         if (hoursText.isEmpty()) return@run null
         val hours = hoursText.toFloatOrNull()
             ?: throw IllegalArgumentException("请输入有效工时，或选择下班时间")
-        if (hours < 0f) throw IllegalArgumentException("工时不能为负数")
+        if (!hours.isFinite() || hours < 0f) throw IllegalArgumentException("请输入有效的非负工时")
         if (hours == 0f) null else inMs + (hours * 3_600_000f).toLong()
     }
 

@@ -92,6 +92,7 @@ class ClockRepository(
                 clockOutTime = existing?.clockOutTime,
                 isLeave = false,
                 daySchedule = existing?.daySchedule ?: DaySchedule.AUTO,
+                courseMinutes = existing?.courseMinutes ?: 0,
             ).toEntity(),
         )
         onRecordsChanged()
@@ -116,6 +117,7 @@ class ClockRepository(
                 clockOutTime = nowMs,
                 isLeave = false,
                 daySchedule = existing.daySchedule,
+                courseMinutes = existing.courseMinutes,
             ).toEntity(),
         )
         onRecordsChanged()

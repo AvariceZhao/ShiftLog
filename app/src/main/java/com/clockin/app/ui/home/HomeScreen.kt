@@ -132,7 +132,13 @@ fun HomeScreen(
                                 .background(NightSurfaceHigh),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(if (state.isRestDay) "今日休息" else "尚未打卡", color = TextSecondary)
+                            Text(
+                                when {
+                                    state.isRestDay -> "今日休息"
+                                    else -> "尚未打卡"
+                                },
+                                color = TextSecondary,
+                            )
                         }
                     } else {
                         val expectedClockOut = if (settings.showExpectedClockOut && !state.isRestDay) {

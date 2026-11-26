@@ -13,6 +13,7 @@ data class ClockRecordEntity(
     val clockOutTime: Long?,
     @ColumnInfo(defaultValue = "0") val isLeave: Boolean = false,
     @ColumnInfo(defaultValue = "'AUTO'") val daySchedule: String = DaySchedule.AUTO.name,
+    @ColumnInfo(defaultValue = "0") val courseMinutes: Int = 0,
 )
 
 fun ClockRecordEntity.toDomain() = ClockRecord(
@@ -21,6 +22,7 @@ fun ClockRecordEntity.toDomain() = ClockRecord(
     clockOutTime = clockOutTime,
     isLeave = isLeave,
     daySchedule = runCatching { DaySchedule.valueOf(daySchedule) }.getOrDefault(DaySchedule.AUTO),
+    courseMinutes = courseMinutes,
 )
 
 fun ClockRecord.toEntity() = ClockRecordEntity(
@@ -29,4 +31,5 @@ fun ClockRecord.toEntity() = ClockRecordEntity(
     clockOutTime = clockOutTime,
     isLeave = isLeave,
     daySchedule = daySchedule.name,
+    courseMinutes = courseMinutes,
 )

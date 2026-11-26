@@ -153,8 +153,13 @@ fun CycleCalendarCard(
                         val hoursLabel = record?.takeIf {
                             !it.isLeave && WorkdayCalendar.isWorkday(day, settings, it)
                         }?.let { rec ->
-                            ShiftCalculator.buildRecordDetail(rec, settings).hoursWorked
-                                ?.let { ShiftCalculator.formatHoursShort(it, settings.calendarHoursDecimalPlaces) }
+                            val hours = ShiftCalculator.buildRecordDetail(rec, settings).hoursWorked
+                            if (hours != null || rec.courseMinutes > 0) {
+                                ShiftCalculator.formatHoursShort(
+                                    (hours ?: 0.0) + rec.courseMinutes / 60.0,
+                                    settings.calendarHoursDecimalPlaces,
+                                )
+                            } else null
                         }
                         CalendarDayCell(
                             day = day.dayOfMonth,

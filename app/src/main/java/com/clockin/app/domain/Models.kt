@@ -25,7 +25,7 @@ data class AttendanceTier(
 }
 
 val DefaultAttendanceTiers = listOf(
-    AttendanceTier(minimumHours = 0f, attendanceCredit = 0.5f),
+    AttendanceTier(minimumHours = 0f, attendanceCredit = 0f, absenceCredit = 0.5f),
     AttendanceTier(minimumHours = 6f, attendanceCredit = 0.5f),
     AttendanceTier(minimumHours = 8f, attendanceCredit = 1f),
 )
@@ -64,6 +64,7 @@ data class ClockRecord(
     val clockOutTime: Long?,
     val isLeave: Boolean = false,
     val daySchedule: DaySchedule = DaySchedule.AUTO,
+    val courseMinutes: Int = 0,
 )
 
 data class PayCycle(
@@ -129,6 +130,38 @@ data class EffectiveAttendanceProgress(
     val absentCount: Double,
     val leaveCount: Int,
     val cycleDaysRemaining: Int,
+    val workdays: Int,
+    val settledWorkdays: Int,
+    val currentWorkdays: Int,
+    val remainingWorkdays: Int,
+    val restDays: Int,
+    val clockedDays: Int,
+    val punchMinutes: Double,
+    val courseMinutes: Double,
+    val creditedMinutes: Double,
+    val fullAttendanceDays: Int,
+    val halfAttendanceDays: Int,
+    val shortAttendanceDays: Int,
+    val fullAbsenceDays: Int,
+    val incompletePunchDays: Int,
+    val pendingDays: Int,
+    val unmatchedTierDays: Int,
+    val tierBreakdown: List<AttendanceTierSummary>,
+) {
+    val effectiveMinutes: Double get() = punchMinutes + courseMinutes
+    val expectedMinutes: Double get() = workdays * 480.0
+    val attendanceRate: Double?
+        get() = if (expectedMinutes > 0) creditedMinutes / expectedMinutes * 100.0 else null
+    val currentExpectedMinutes: Double get() = currentWorkdays * 480.0
+    val currentAttendanceRate: Double?
+        get() = if (currentExpectedMinutes > 0) creditedMinutes / currentExpectedMinutes * 100.0 else null
+    val remainingMinutes: Double get() = (expectedMinutes - creditedMinutes).coerceAtLeast(0.0)
+}
+
+data class AttendanceTierSummary(
+    val tier: AttendanceTier,
+    val maximumHoursExclusive: Float?,
+    val days: Int,
 )
 
 object DateFormats {

@@ -259,8 +259,8 @@ class StatsCalculatorTest {
             zoneId = TestZone,
         )
 
-        assertEquals(2.5, progress.effectiveAttendance, 0.001)
-        assertEquals(1.0, progress.absentCount, 0.001)
+        assertEquals(2.0, progress.effectiveAttendance, 0.001)
+        assertEquals(1.5, progress.absentCount, 0.001)
         assertEquals(1, progress.leaveCount)
     }
 }

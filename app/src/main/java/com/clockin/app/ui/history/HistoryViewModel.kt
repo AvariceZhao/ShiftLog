@@ -13,6 +13,7 @@ import com.clockin.app.domain.ClockRecord
 import com.clockin.app.domain.CycleCalculator
 import com.clockin.app.domain.CsvExporter
 import com.clockin.app.domain.CycleStats
+import com.clockin.app.domain.EffectiveAttendanceProgress
 import com.clockin.app.domain.PayCycle
 import com.clockin.app.domain.RecordDetail
 import com.clockin.app.domain.ShiftCalculator
@@ -30,6 +31,7 @@ data class HistoryUiState(
     val cycle: PayCycle? = null,
     val records: List<RecordDetail> = emptyList(),
     val stats: CycleStats? = null,
+    val attendanceStats: EffectiveAttendanceProgress? = null,
 )
 
 class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
@@ -52,6 +54,7 @@ class HistoryViewModel(private val repository: ClockRepository) : ViewModel() {
                     cycle = cycle,
                     records = records.map { ShiftCalculator.buildRecordDetail(it, settings) },
                     stats = StatsCalculator.cycleStats(records, settings, cycle),
+                    attendanceStats = StatsCalculator.effectiveAttendanceProgress(records, settings, cycle),
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HistoryUiState())

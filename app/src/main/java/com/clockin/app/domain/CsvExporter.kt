@@ -28,7 +28,9 @@ object CsvExporter {
         sb.appendLine("# 记录数,${records.size}")
         sb.appendLine("# 目标,${settings.targetDays}天,${settings.targetHours}h")
         sb.appendLine("# 合计,${clockedDays}天,${"%.1f".format(totalHours)}h")
-        sb.appendLine("日期,上班时间,下班时间,工时(小时),备注,排班")
+        val includeLegacyCourse = records.any { it.courseMinutes > 0 }
+        val legacyHeader = if (includeLegacyCourse) ",上课时长(分钟)" else ""
+        sb.appendLine("日期,上班时间,下班时间,工时(小时),备注,排班${legacyHeader},有效时长(分钟),出勤计入时长(分钟)")
         records.sortedByDescending { it.shiftDate }.forEach { record ->
             val detail = ShiftCalculator.buildRecordDetail(record, settings)
             val isWorkday = WorkdayCalendar.isWorkday(record.shiftDate.toLocalDate(), settings, record)
@@ -36,8 +38,11 @@ object CsvExporter {
             val clockOut = record.clockOutTime?.let { formatTime(it) } ?: ""
             val hours = detail.hoursWorked?.takeIf { isWorkday && !record.isLeave }
                 ?.let { "%.2f".format(it) } ?: ""
+            val effectiveMinutes = if (isWorkday && !record.isLeave) {
+                (detail.hoursWorked ?: 0.0) * 60.0 + record.courseMinutes.coerceAtLeast(0)
+            } else 0.0
             sb.appendLine(
-                listOf(
+                listOfNotNull(
                     formatDate(record.shiftDate),
                     clockIn,
                     clockOut,
@@ -52,6 +57,9 @@ object CsvExporter {
                         DaySchedule.WORKDAY -> "工作日"
                         DaySchedule.REST_DAY -> "休息日"
                     },
+                    if (includeLegacyCourse) record.courseMinutes.toString() else null,
+                    StatsCalculator.formatAttendance(effectiveMinutes),
+                    StatsCalculator.formatAttendance(effectiveMinutes.coerceAtMost(480.0)),
                 ).joinCsvRow(),
             )
         }

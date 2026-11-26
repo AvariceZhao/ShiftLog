@@ -494,7 +494,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("历史周期汇总", style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "在历史页显示打卡天数和累计工时",
+                                "在历史页显示出勤率、时长、折算出勤与缺勤等周期指标",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary,
                             )
@@ -631,7 +631,8 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            "按当日完整打卡工时匹配最高适用档，出勤和缺勤次数可独立设置。全天无打卡的工作日仍记缺勤 1 次；请假和休息日不计入。",
+                            "按打卡时长匹配最高适用档，出勤和缺勤次数独立设置。" +
+                                "出勤时长每天最多计 8 小时；工作日全天未打卡记缺勤 1 次，请假和休息日不计缺勤。",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary,
                         )

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,11 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.clockin.app.domain.StatsCalculator
-import com.clockin.app.domain.CycleStats
 import com.clockin.app.domain.EffectiveAttendanceProgress
 import com.clockin.app.domain.TargetProgress
 import com.clockin.app.ui.theme.TextSecondary
@@ -155,6 +157,15 @@ fun EffectiveAttendanceProgressCard(
     progress: EffectiveAttendanceProgress,
     modifier: Modifier = Modifier,
 ) {
+    AttendanceStatisticsCard(progress, title = "有效出勤", modifier = modifier)
+}
+
+@Composable
+private fun AttendanceStatisticsCard(
+    progress: EffectiveAttendanceProgress,
+    title: String,
+    modifier: Modifier = Modifier,
+) {
     AppCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -170,7 +181,7 @@ fun EffectiveAttendanceProgressCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Icon(AppIcons.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text("有效出勤", style = MaterialTheme.typography.titleLarge)
+                    Text(title, style = MaterialTheme.typography.titleLarge)
                 }
             }
             Row(
@@ -178,22 +189,34 @@ fun EffectiveAttendanceProgressCard(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 SummaryMetric(
-                    label = "折算出勤",
-                    value = "${StatsCalculator.formatAttendance(progress.effectiveAttendance)} 次",
+                    label = "出勤天数",
+                    value = "${StatsCalculator.formatAttendance(progress.effectiveAttendance)} 天",
                     modifier = Modifier.weight(1f),
                 )
                 SummaryMetric(
-                    label = "折算缺勤",
-                    value = "${StatsCalculator.formatAttendance(progress.absentCount)} 次",
-                    modifier = Modifier.weight(1f),
-                )
-                SummaryMetric(
-                    label = "请假",
-                    value = "${progress.leaveCount} 天",
+                    label = "出勤率（当前）",
+                    value = progress.currentAttendanceRate?.let { "${"%.1f".format(it)}%" } ?: "--",
                     modifier = Modifier.weight(1f),
                 )
             }
-            StatRow(label = "本周期剩余", value = "${progress.cycleDaysRemaining} 天")
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                SummaryMetric(
+                    label = "出勤时长",
+                    value = StatsCalculator.formatAttendanceDuration(progress.creditedMinutes),
+                    modifier = Modifier.weight(1f),
+                    compact = true,
+                    smallDurationUnits = true,
+                )
+                SummaryMetric(
+                    label = "缺勤次数",
+                    value = "${StatsCalculator.formatAttendance(progress.absentCount)} 次",
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -206,49 +229,36 @@ private fun formatCompletedHours(remainingHours: Double): String = when {
 }
 
 @Composable
-fun CycleSummaryCard(stats: CycleStats, modifier: Modifier = Modifier) {
-    AppCard(modifier = modifier) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    AppIcons.Calendar,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text("周期汇总", style = MaterialTheme.typography.titleLarge)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                SummaryMetric(
-                    label = "打卡天数",
-                    value = "${stats.clockedDays} 天",
-                    modifier = Modifier.weight(1f),
-                )
-                SummaryMetric(
-                    label = "累计工时",
-                    value = "${"%.1f".format(stats.totalHours)} h",
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
+fun CycleSummaryCard(stats: EffectiveAttendanceProgress, modifier: Modifier = Modifier) {
+    AttendanceStatisticsCard(stats, title = "周期汇总", modifier = modifier)
 }
 
 @Composable
-private fun SummaryMetric(label: String, value: String, modifier: Modifier = Modifier) {
+private fun SummaryMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    smallDurationUnits: Boolean = false,
+) {
+    val unitStyle = SpanStyle(
+        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+    )
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         Text(
-            value,
-            style = MaterialTheme.typography.titleLarge.copy(
+            buildAnnotatedString {
+                append(value)
+                if (smallDurationUnits) {
+                    listOf("h", "m").forEach { unit ->
+                        val start = value.indexOf(unit)
+                        if (start >= 0) addStyle(unitStyle, start, start + unit.length)
+                    }
+                }
+            },
+            style = (if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge).copy(
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = FontFamily.Monospace,
             ),

@@ -69,6 +69,7 @@ object BackupExporter {
                     put("clockOutTime", record.clockOutTime ?: JSONObject.NULL)
                     put("isLeave", record.isLeave)
                     put("daySchedule", record.daySchedule.name)
+                    put("courseMinutes", record.courseMinutes)
                 },
             )
         }
@@ -104,8 +105,9 @@ object BackupImporter {
             .filter { it.isNotEmpty() && !it.startsWith("#") }
         val dataLines = lines.dropWhile { !it.startsWith("日期,") && !it.startsWith("日期，") }
         if (dataLines.isEmpty()) error("未找到 CSV 数据行")
+        val legacyCourseIndex = splitCsvLine(dataLines.first()).indexOf("上课时长(分钟)")
         dataLines.drop(1).mapNotNull { line ->
-            runCatching { parseCsvLine(line, settings, zoneId) }.getOrNull()
+            runCatching { parseCsvLine(line, settings, zoneId, legacyCourseIndex) }.getOrNull()
         }
     }.recoverCatching { error ->
         throw IllegalArgumentException(error.message ?: "CSV 文件格式无效")
@@ -148,6 +150,7 @@ object BackupImporter {
                 daySchedule = runCatching {
                     DaySchedule.valueOf(item.optString("daySchedule", DaySchedule.AUTO.name))
                 }.getOrDefault(DaySchedule.AUTO),
+                courseMinutes = item.optInt("courseMinutes", 0).coerceIn(0, 1440),
             )
         }
         return records
@@ -171,6 +174,7 @@ object BackupImporter {
         line: String,
         settings: AppSettings,
         zoneId: ZoneId,
+        legacyCourseIndex: Int,
     ): ClockRecord? {
         val parts = splitCsvLine(line)
         if (parts.size < 3) return null
@@ -184,7 +188,13 @@ object BackupImporter {
             "休息日" -> DaySchedule.REST_DAY
             else -> DaySchedule.AUTO
         }
-        if (clockIn == null && clockOut == null && !isLeave && daySchedule == DaySchedule.AUTO) return null
+        val courseText = parts.getOrNull(legacyCourseIndex)?.trim().orEmpty()
+        val courseMinutes = if (courseText.isBlank()) 0 else {
+            courseText.toIntOrNull()?.takeIf { it in 0..1440 } ?: return null
+        }
+        if (clockIn == null && clockOut == null && !isLeave &&
+            daySchedule == DaySchedule.AUTO && courseMinutes == 0
+        ) return null
         if (parts[1].isNotBlank() && clockIn == null) return null
         if (parts[2].isNotBlank() && clockOut == null) return null
         return ClockRecord(
@@ -193,6 +203,7 @@ object BackupImporter {
             clockOutTime = clockOut?.let { timeToMillis(date, it, isClockOut = true, settings, zoneId) },
             isLeave = isLeave,
             daySchedule = daySchedule,
+            courseMinutes = courseMinutes,
         )
     }
 

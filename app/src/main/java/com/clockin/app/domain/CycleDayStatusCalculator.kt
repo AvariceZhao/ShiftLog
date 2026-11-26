@@ -37,12 +37,15 @@ object CycleDayStatusCalculator {
         }
 
         if (existing?.isLeave == true) return CycleDayStatus.LEAVE
+        if (existing?.courseMinutes?.let { it > 0 } == true &&
+            existing.clockInTime == null && existing.clockOutTime == null
+        ) return CycleDayStatus.NORMAL
         if (existing == null || (existing.clockInTime == null && existing.clockOutTime == null)) {
             if (!isShiftEnded(date, now, settings)) return CycleDayStatus.PENDING
             return CycleDayStatus.ABSENT
         }
         if (existing.clockInTime == null || existing.clockOutTime == null) {
-            if (date.isBefore(today) || isShiftEnded(date, now, settings)) {
+            if (isShiftEnded(date, now, settings)) {
                 return CycleDayStatus.ISSUE
             }
             return CycleDayStatus.PENDING

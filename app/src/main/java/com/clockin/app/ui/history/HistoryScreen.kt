@@ -125,7 +125,7 @@ fun HistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (settings.showHistoryCycleSummary) {
-                    state.stats?.let { stats ->
+                    state.attendanceStats?.let { stats ->
                         item { CycleSummaryCard(stats) }
                     }
                 }

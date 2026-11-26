@@ -51,7 +51,7 @@ object StatsCalculator {
             when {
                 !WorkdayCalendar.isWorkday(date, settings, record) -> Unit
                 record?.isLeave == true -> Unit
-                record == null || (record.clockInTime == null && record.clockOutTime == null) -> {
+                record == null || (record.clockInTime == null && record.clockOutTime == null && record.courseMinutes == 0) -> {
                     if (shouldEvaluateMissedOut(date, now, settings)) absentCount++
                 }
                 record.clockInTime != null && record.clockOutTime == null -> {
@@ -167,52 +167,18 @@ object StatsCalculator {
         today: LocalDate = LocalDate.now(),
         now: LocalDateTime = LocalDateTime.now(),
         zoneId: ZoneId = ZoneId.systemDefault(),
-    ): EffectiveAttendanceProgress {
-        val recordByDate = records.associateBy { it.shiftDate }
-        val tiers = settings.attendanceTiers
-            .filter { it.isValid }
-            .sortedBy { it.minimumHours }
-        var effectiveAttendance = 0.0
-        var absentCount = 0.0
-        var leaveCount = 0
-        var date = cycle.start
-
-        while (!date.isAfter(cycle.end) && !date.isAfter(today)) {
-            if (!shouldEvaluateDay(date, today, now, settings)) {
-                date = date.plusDays(1)
-                continue
-            }
-            val record = recordByDate[date.toShiftDateString()]
-            when {
-                !WorkdayCalendar.isWorkday(date, settings, record) -> Unit
-                record?.isLeave == true -> leaveCount++
-                record == null || (record.clockInTime == null && record.clockOutTime == null) -> {
-                    if (shouldEvaluateMissedOut(date, now, settings)) absentCount++
-                }
-                record.clockInTime != null && record.clockOutTime != null -> {
-                    val hours = ShiftCalculator.buildRecordDetail(record, settings, zoneId).hoursWorked
-                    if (hours != null) {
-                        tiers.lastOrNull { hours >= it.minimumHours }?.let { tier ->
-                            effectiveAttendance += tier.attendanceCredit.toDouble()
-                            absentCount += tier.absenceCredit.toDouble()
-                        }
-                    }
-                }
-            }
-            date = date.plusDays(1)
-        }
-
-        return EffectiveAttendanceProgress(
-            effectiveAttendance = effectiveAttendance,
-            absentCount = absentCount,
-            leaveCount = leaveCount,
-            cycleDaysRemaining = CycleCalculator.cycleDaysRemaining(cycle, today),
-        )
-    }
+    ): EffectiveAttendanceProgress = AttendanceCalculator.calculate(records, settings, cycle, today, now)
 
     fun formatAttendance(value: Double): String = String.format(Locale.ROOT, "%.2f", value)
         .trimEnd('0')
         .trimEnd('.')
+
+    fun formatAttendanceDuration(minutes: Double): String {
+        val wholeMinutes = if (minutes.isFinite()) {
+            kotlin.math.floor(minutes.coerceAtLeast(0.0) + 0.0000001).toLong()
+        } else 0L
+        return "${wholeMinutes / 60}h${wholeMinutes % 60}m"
+    }
 
     fun formatDailyAvg(hours: Double?, unreachable: Boolean): String = when {
         hours == null -> "--"

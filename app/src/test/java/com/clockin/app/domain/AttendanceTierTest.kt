@@ -31,15 +31,15 @@ class AttendanceTierTest {
         val progress = StatsCalculator.effectiveAttendanceProgress(
             records, settings, cycle, today, today.atTime(12, 0), TestZone,
         )
-        assertEquals(2.25, progress.effectiveAttendance, 0.001)
-        assertEquals(2.75, progress.absentCount, 0.001)
+        assertEquals(2.5, progress.effectiveAttendance, 0.001)
+        assertEquals(3.5, progress.absentCount, 0.001)
         assertEquals(1, progress.leaveCount)
 
         val revised = StatsCalculator.effectiveAttendanceProgress(
             records, settings.copy(attendanceTiers = tiers.map { it.copy(absenceCredit = 0f) }),
             cycle, today, today.atTime(12, 0), TestZone,
         )
-        assertEquals(2.25, revised.effectiveAttendance, 0.001)
+        assertEquals(2.5, revised.effectiveAttendance, 0.001)
         assertEquals(1.0, revised.absentCount, 0.001)
     }
 
@@ -77,9 +77,33 @@ class AttendanceTierTest {
 
     @Test
     fun preferences_oldTwoFieldTiersKeepZeroAbsenceAndNewTiersRoundTrip() {
-        assertEquals(DefaultAttendanceTiers, AttendanceTierCodec.decode("0.0:0.5;6.0:0.5;8.0:1.0"))
+        assertEquals(
+            listOf(AttendanceTier(0f, 0.5f, 0f), AttendanceTier(6f, 0.5f, 0f), AttendanceTier(8f, 1f, 0f)),
+            AttendanceTierCodec.decode("0.0:0.5;6.0:0.5;8.0:1.0"),
+        )
         assertEquals(tiers, AttendanceTierCodec.decode(AttendanceTierCodec.encode(tiers.reversed())))
         assertTrue(AttendanceTierCodec.decode("0:0.5:0.5;6:0.5;8:1:0").all { it.isValid })
+    }
+
+    @Test
+    fun defaults_shortShiftIsHalfAbsenceAndSixHoursStartsHalfAttendance() {
+        val day = date(2026, 6, 10)
+        val settings = defaultSettings()
+        listOf(
+            Triple(0.0, 0.0, 0.5),
+            Triple(5.99, 0.0, 0.5),
+            Triple(6.0, 0.5, 0.0),
+            Triple(7.99, 0.5, 0.0),
+            Triple(8.0, 1.0, 0.0),
+        ).forEach { (hours, attendance, absence) ->
+            val progress = StatsCalculator.effectiveAttendanceProgress(
+                listOf(completed(day, hours)), settings, PayCycle(day, day), day.plusDays(2),
+                day.plusDays(2).atTime(12, 0), TestZone,
+            )
+            assertEquals("attendance for $hours hours", attendance, progress.effectiveAttendance, 0.001)
+            assertEquals("absence for $hours hours", absence, progress.absentCount, 0.001)
+        }
+        assertEquals(DefaultAttendanceTiers, AttendanceTierCodec.decode(null))
     }
 
     @Test
